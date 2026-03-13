@@ -1,0 +1,415 @@
+= BPMN Model API
+:toc:
+:toclevels: 3
+
+== Overview
+
+Пакет `pkg/bpmn_model` предоставляет Go-реализацию BPMN 2.0 model API, аналогичную Zeebe/Camunda bpmn-model (Java). Поддерживает:
+
+* Парсинг BPMN XML (ReadFromFile, ReadFromString, ReadFromBytes)
+* Fluent-билдер для программного создания процессов
+* Полная система типов BPMN 2.0 (задачи, события, шлюзы, подпроцессы)
+* Zeebe-расширения (taskDefinition, ioMapping, adHoc и др.)
+* BPMN DI (Diagram Interchange) - автогенерация и парсинг
+* Query API для навигации по графу процесса
+* Валидация моделей
+
+== Quick Start
+
+=== Парсинг BPMN файла
+
+[source,go]
+----
+package main
+
+import (
+    "fmt"
+    "log"
+
+    bpmn "github.com/esivres/c2h5oh/pkg/bpmn_model"
+)
+
+func main() {
+    // Парсинг из файла
+    bmi, err := bpmn.ReadFromFile("process.bpmn")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Получить все процессы
+    for _, proc := range bpmn.GetTypedElements[bpmn.Process](bmi.ModelInstance) {
+        fmt.Printf("Process: %s (executable: %v)\n", proc.GetId(), proc.IsExecutable())
+    }
+
+    // Получить все service tasks
+    for _, task := range bpmn.GetTypedElements[bpmn.ServiceTask](bmi.ModelInstance) {
+        fmt.Printf("ServiceTask: %s (%s)\n", task.GetId(), task.GetName())
+
+        // Zeebe task definition
+        if td, ok := bpmn.GetSingleExtensionElement[bpmn.ZeebeTaskDefinition](task); ok {
+            fmt.Printf("  Job type: %s\n", td.GetType())
+        }
+    }
+}
+----
+
+=== Создание процесса через билдер
+
+[source,go]
+----
+// Простой процесс: start -> serviceTask -> end
+bmi := bpmn.CreateExecutableProcess("my-process").
+    StartEvent("start").
+    ServiceTask("call-api").Name("Call External API").
+        ZeebeJobType("api-caller").
+        ZeebeInput("=requestData", "input").
+        ZeebeOutput("=response", "result").
+    EndEvent("end").
+    Done()
+
+// Сохранить в файл
+err := bpmn.WriteToFile(bmi, "my-process.bpmn")
+
+// Или получить XML строку
+xml, err := bpmn.ConvertToString(bmi)
+----
+
+== Билдер: примеры
+
+=== Линейный процесс
+
+[source,go]
+----
+bmi := bpmn.CreateExecutableProcess("linear").
+    StartEvent("start").
+    ServiceTask("step1").Name("First Step").
+        ZeebeJobType("worker-1").
+    ServiceTask("step2").Name("Second Step").
+        ZeebeJobType("worker-2").
+    EndEvent("end").
+    Done()
+----
+
+=== Exclusive Gateway (ветвление по условию)
+
+[source,go]
+----
+bmi := bpmn.CreateExecutableProcess("branching").
+    StartEvent("start").
+    ExclusiveGateway("decision").
+        // Первая ветка: условие + service task
+        ConditionExpression("=amount > 1000").
+        ServiceTask("approve").Name("Manual Approval").
+            ZeebeJobType("approval").
+        EndEvent("end-approved").
+    // Вернуться к шлюзу для второй ветки
+    MoveToLastGateway().
+        DefaultFlow().
+        ServiceTask("auto").Name("Auto Process").
+            ZeebeJobType("auto-processor").
+        EndEvent("end-auto").
+    Done()
+----
+
+=== Parallel Gateway (параллельное выполнение)
+
+[source,go]
+----
+bmi := bpmn.CreateExecutableProcess("parallel").
+    StartEvent("start").
+    ParallelGateway("fork").
+        ServiceTask("taskA").Name("Task A").ZeebeJobType("worker-a").
+        ParallelGateway("join").
+    MoveToNode("fork").
+        ServiceTask("taskB").Name("Task B").ZeebeJobType("worker-b").
+        ConnectTo("join").
+    MoveToNode("join").
+        EndEvent("end").
+    Done()
+----
+
+=== User Task с формой
+
+[source,go]
+----
+bmi := bpmn.CreateExecutableProcess("user-review").
+    StartEvent("start").
+    UserTask("review").Name("Review Document").
+        ZeebeAssignee("=reviewer").
+        ZeebeCandidateGroups("managers,leads").
+        ZeebeFormId("review-form").
+    EndEvent("end").
+    Done()
+----
+
+=== Call Activity (вызов внешнего процесса)
+
+[source,go]
+----
+bmi := bpmn.CreateExecutableProcess("parent").
+    StartEvent("start").
+    CallActivity("call-child").Name("Run Child Process").
+        ZeebeProcessId("child-process").
+    EndEvent("end").
+    Done()
+----
+
+=== AdHoc SubProcess (AI Agent паттерн)
+
+[source,go]
+----
+bmi := bpmn.CreateExecutableProcess("ai-agent").
+    StartEvent("start").
+    AdHocSubProcess("agent").Name("AI Agent").
+        ZeebeJobType("kamundarf:adhoc:v1").
+        ZeebeAdHocConfig("toolCallResults",
+            "={id: _meta.id, name: _meta.name, content: toolCallResult}").
+        ZeebeInput("=userQuery", "userQuery").
+        ZeebeInput("=2000", "maxOutPutTokens").
+    EndEvent("end").
+    Done()
+----
+
+=== Service Task с полным набором Zeebe-расширений
+
+[source,go]
+----
+bmi := bpmn.CreateExecutableProcess("full-service").
+    StartEvent("start").
+    ServiceTask("http-call").Name("HTTP Connector").
+        ZeebeJobType("io.camunda:http-json:1").
+        ZeebeJobRetries("3").
+        ZeebeInput("https://api.example.com", "url").
+        ZeebeInput("GET", "method").
+        ZeebeOutput("=body", "response").
+        ZeebeTaskHeader("resultExpression", "={data: body.data}").
+        ZeebeTaskHeader("retryBackoff", "PT10S").
+    EndEvent("end").
+    Done()
+----
+
+=== Script Task
+
+[source,go]
+----
+bmi := bpmn.CreateExecutableProcess("scripted").
+    StartEvent("start").
+    ScriptTask("calc").Name("Calculate").
+        ZeebeScript("=order.total * 0.1", "discount").
+    EndEvent("end").
+    Done()
+----
+
+== Query API
+
+Query API позволяет навигировать по графу процесса.
+
+[source,go]
+----
+bmi, _ := bpmn.ReadFromFile("process.bpmn")
+
+// Получить все процессы
+procs := bpmn.QueryProcesses(bmi)
+proc, _ := procs.SingleResult()
+
+// Найти элемент по ID
+start, _ := bpmn.GetTypedElementById[bpmn.FlowNode](bmi.ModelInstance, "start")
+
+// Следующие узлы
+next := bpmn.SucceedingNodes(start)
+fmt.Printf("After start: %d nodes\n", next.Count())
+
+// Предыдущие узлы
+prev := bpmn.PreviousNodes(someNode)
+
+// Фильтрация по типу
+serviceTasks := bpmn.FilterByType[bpmn.ServiceTask](bpmn.SucceedingNodes(gateway))
+
+// Фильтрация по предикату
+filtered := bpmn.SucceedingNodes(gateway).Filter(func(n bpmn.FlowNode) bool {
+    return n.GetName() == "Important Task"
+})
+
+// Цепочка навигации: start -> gw -> serviceTask -> end
+gw, _ := bpmn.SucceedingNodes(start).SingleResult()
+svc, _ := bpmn.FilterByType[bpmn.ServiceTask](bpmn.SucceedingNodes(gw)).SingleResult()
+end, _ := bpmn.SucceedingNodes(svc).SingleResult()
+----
+
+== Валидация
+
+[source,go]
+----
+bmi, _ := bpmn.ReadFromFile("process.bpmn")
+
+// Базовая BPMN-валидация
+results := bpmn.Validate(bmi)
+if results.HasErrors() {
+    fmt.Println(results.String())
+}
+
+// Валидация с Zeebe-специфичными правилами
+results = bpmn.ValidateWithValidators(bmi, bpmn.ZeebeValidators()...)
+
+// Кастомный валидатор
+type myValidator struct{}
+func (v *myValidator) Validate(bmi *bpmn.BpmnModelInstance) []bpmn.ValidationResult {
+    // ...
+}
+results = bpmn.ValidateWithValidators(bmi, &myValidator{})
+----
+
+=== Встроенные валидаторы
+
+|===
+| Валидатор | Описание
+
+| StartEventValidator | Процесс должен иметь хотя бы один start event
+| EndEventValidator | Процесс должен иметь хотя бы один end event
+| SequenceFlowValidator | sourceRef и targetRef должны существовать
+| ExclusiveGatewayValidator | Исходящие потоки (кроме default) должны иметь условия
+| ServiceTaskZeebeValidator | Zeebe service task должен иметь job type
+| CallActivityValidator | Call activity должна ссылаться на вызываемый процесс
+|===
+
+== Поддерживаемые BPMN-элементы
+
+=== Задачи (Tasks)
+
+* ServiceTask - задача для воркера
+* UserTask - пользовательская задача
+* ScriptTask - скриптовая задача
+* BusinessRuleTask - задача бизнес-правил
+* SendTask - отправка сообщения
+* ReceiveTask - получение сообщения
+* ManualTask - ручная задача
+
+=== Подпроцессы
+
+* SubProcess - встроенный подпроцесс
+* AdHocSubProcess - ad-hoc подпроцесс (AI Agent паттерн)
+* CallActivity - вызов внешнего процесса
+
+=== Шлюзы (Gateways)
+
+* ExclusiveGateway - эксклюзивный (XOR)
+* ParallelGateway - параллельный (AND)
+* InclusiveGateway - инклюзивный (OR)
+* EventBasedGateway - на основе событий
+* ComplexGateway - комплексный
+
+=== События (Events)
+
+* StartEvent, EndEvent
+* IntermediateCatchEvent, IntermediateThrowEvent
+* BoundaryEvent
+
+=== Определения событий (Event Definitions)
+
+* MessageEventDefinition
+* TimerEventDefinition
+* SignalEventDefinition
+* ErrorEventDefinition
+* EscalationEventDefinition
+* ConditionalEventDefinition
+* LinkEventDefinition
+* CompensateEventDefinition
+* CancelEventDefinition
+* TerminateEventDefinition
+
+=== Прочие элементы
+
+* Message, Signal, Error, Escalation
+* Collaboration, Participant, MessageFlow
+* LaneSet, Lane
+* DataObject, DataObjectReference
+* TextAnnotation, Group, Association
+* MultiInstanceLoopCharacteristics
+* Documentation
+
+== Zeebe-расширения
+
+|===
+| Расширение | Описание
+
+| ZeebeTaskDefinition | type, retries для job worker
+| ZeebeIoMapping | Input/Output маппинг переменных
+| ZeebeTaskHeaders | Пользовательские заголовки задач
+| ZeebeSubscription | correlationKey для сообщений
+| ZeebeCalledElement | processId для call activity
+| ZeebeCalledDecision | decisionId для DMN
+| ZeebeFormDefinition | formId/formKey для пользовательских форм
+| ZeebeUserTask | маркер Zeebe user task
+| ZeebeAssignmentDefinition | assignee, candidateGroups, candidateUsers
+| ZeebeExecutionListeners | слушатели выполнения
+| ZeebeProperties | пользовательские свойства
+| ZeebeLoopCharacteristics | мультиэкземплярность
+| ZeebeScript | FEEL-выражение для script task
+| ZeebeAdHoc | outputCollection/outputElement для ad-hoc подпроцесса
+| ZeebePublishMessage | correlationKey, messageId
+| ZeebeTaskSchedule | dueDate, followUpDate
+|===
+
+== BPMN DI (Diagram Interchange)
+
+Билдер автоматически генерирует DI при вызове `Done()`:
+
+* BpmnDiagram с BpmnPlane
+* BpmnShape для каждого элемента (events 36x36, tasks 100x80, gateways 50x50)
+* BpmnEdge с waypoints для каждого sequence flow
+* Горизонтальная раскладка элементов
+
+При парсинге существующего BPMN файла DI сохраняется и доступен через:
+
+[source,go]
+----
+diagrams := bpmn.GetTypedElements[bpmn.BpmnDiagram](bmi.ModelInstance)
+plane := diagrams[0].GetPlane()
+
+for _, shape := range plane.GetShapes() {
+    bounds := shape.GetBounds()
+    fmt.Printf("Shape %s: x=%.0f y=%.0f w=%.0f h=%.0f\n",
+        shape.GetBpmnElement(), bounds.GetX(), bounds.GetY(),
+        bounds.GetWidth(), bounds.GetHeight())
+}
+
+for _, edge := range plane.GetEdges() {
+    fmt.Printf("Edge %s: %d waypoints\n",
+        edge.GetBpmnElement(), len(edge.GetWaypoints()))
+}
+----
+
+== Архитектура
+
+=== Иерархия типов
+
+----
+ModelElementInstance
+  BaseElement (id, name, extensionElements)
+    FlowElement
+      FlowNode (incoming/outgoing)
+        Event
+          CatchEvent -> StartEvent, IntermediateCatchEvent, BoundaryEvent
+          ThrowEvent -> EndEvent, IntermediateThrowEvent
+        Gateway -> Exclusive, Parallel, Inclusive, EventBased, Complex
+        Activity
+          Task -> Service, User, Script, BusinessRule, Send, Receive, Manual
+          SubProcess -> AdHocSubProcess
+          CallActivity
+      SequenceFlow (sourceRef, targetRef, conditionExpression)
+    Definitions
+    Process
+----
+
+=== Ключевые решения
+
+|===
+| Java | Go
+
+| Interface + Impl class | Interface + struct (embedding)
+| Abstract generic builders | Struct composition + generics
+| static Attribute fields | Package-level vars
+| DOM (org.w3c.dom) | etree (github.com/beevik/etree)
+| Generics `<T extends X>` | Go generics `[T X]`
+| Exceptions | error return values
+|===

@@ -1,0 +1,244 @@
+syntax = "proto3";
+
+package rumunda.gateway.v1;
+
+option go_package = "github.com/esivres/c2h5oh/api/proto;gatewaypb";
+
+import "google/protobuf/duration.proto";
+
+// GatewayAPI is the external command API for the BPMN engine.
+service GatewayAPI {
+  // DeployProcess deploys a BPMN process definition.
+  rpc DeployProcess(DeployProcessRequest) returns (DeployProcessResponse);
+
+  // CreateProcessInstance starts a new process instance.
+  rpc CreateProcessInstance(CreateProcessInstanceRequest) returns (CreateProcessInstanceResponse);
+
+  // CreateProcessInstanceWithResult starts a process and waits for it to complete.
+  rpc CreateProcessInstanceWithResult(CreateProcessInstanceWithResultRequest) returns (CreateProcessInstanceWithResultResponse);
+
+  // ActivateJobs returns available jobs for a given type (long-poll).
+  rpc ActivateJobs(ActivateJobsRequest) returns (ActivateJobsResponse);
+
+  // StreamActivatedJobs opens a server-side stream that pushes jobs to the worker
+  // as they become available. The worker receives jobs one by one and processes them.
+  rpc StreamActivatedJobs(StreamActivatedJobsRequest) returns (stream ActivatedJob);
+
+  // CompleteJob marks a job as completed.
+  rpc CompleteJob(CompleteJobRequest) returns (CompleteJobResponse);
+
+  // BroadcastSignal broadcasts a BPMN signal.
+  rpc BroadcastSignal(BroadcastSignalRequest) returns (BroadcastSignalResponse);
+
+  // PublishMessage publishes a message for correlation.
+  rpc PublishMessage(PublishMessageRequest) returns (PublishMessageResponse);
+
+  // UpdateJobRetries updates the retry count of a job.
+  rpc UpdateJobRetries(UpdateJobRetriesRequest) returns (UpdateJobRetriesResponse);
+
+  // UpdateJobTimeout updates the deadline of an activated job.
+  rpc UpdateJobTimeout(UpdateJobTimeoutRequest) returns (UpdateJobTimeoutResponse);
+
+  // DeleteResource soft-deletes a deployed resource (process definition or form).
+  rpc DeleteResource(DeleteResourceRequest) returns (DeleteResourceResponse);
+
+  // ActivateElement activates an element inside an ad-hoc subprocess.
+  rpc ActivateElement(ActivateElementRequest) returns (ActivateElementResponse);
+}
+
+// --- DeployProcess ---
+
+message DeployProcessRequest {
+  // name is a human-readable process name.
+  string name = 1;
+  // definition is the raw BPMN XML content.
+  bytes definition = 2;
+}
+
+message DeployProcessResponse {
+  // key is the process definition key assigned by the engine.
+  uint64 key = 1;
+  // process_id is the BPMN process id extracted from XML.
+  string process_id = 2;
+  // version is the deployed version number.
+  uint64 version = 3;
+}
+
+// --- CreateProcessInstance ---
+
+message CreateProcessInstanceRequest {
+  // process_id is the BPMN process id. Uses latest version.
+  string process_id = 1;
+  // variables is the initial variables as JSON string.
+  string variables = 2;
+}
+
+message CreateProcessInstanceResponse {
+  // process_instance_key is the key of the created instance.
+  uint64 process_instance_key = 1;
+  // process_definition_key is the key of the resolved definition.
+  uint64 process_definition_key = 2;
+}
+
+// --- CreateProcessInstanceWithResult ---
+
+message CreateProcessInstanceWithResultRequest {
+  // process_id is the BPMN process id. Uses latest version.
+  string process_id = 1;
+  // variables is the initial variables as JSON string.
+  string variables = 2;
+  // request_timeout is how long to wait for the process to complete.
+  google.protobuf.Duration request_timeout = 3;
+  // fetch_variables is the list of variable names to return. Empty means all.
+  repeated string fetch_variables = 4;
+}
+
+message CreateProcessInstanceWithResultResponse {
+  // process_definition_key is the key of the process definition.
+  uint64 process_definition_key = 1;
+  // bpmn_process_id is the BPMN process id.
+  string bpmn_process_id = 2;
+  // process_instance_key is the key of the completed instance.
+  uint64 process_instance_key = 3;
+  // variables is the result variables as JSON string.
+  string variables = 4;
+}
+
+// --- ActivateJobs ---
+
+message ActivateJobsRequest {
+  // type is the job type to activate.
+  string type = 1;
+  // worker is the name of the worker.
+  string worker = 2;
+  // max_jobs is the max number of jobs to return.
+  int32 max_jobs = 3;
+  // timeout is how long the worker has to complete each job.
+  google.protobuf.Duration timeout = 4;
+}
+
+message ActivatedJob {
+  // key is the job key.
+  uint64 key = 1;
+  // process_instance_key is the owning process instance.
+  uint64 process_instance_key = 2;
+  // process_definition_key is the process definition.
+  uint64 process_definition_key = 3;
+  // element_id is the BPMN element id that created this job.
+  string element_id = 4;
+  // type is the job type.
+  string type = 5;
+  // retries is the remaining retries.
+  int32 retries = 6;
+  // variables is the job variables as JSON string.
+  string variables = 7;
+}
+
+message ActivateJobsResponse {
+  repeated ActivatedJob jobs = 1;
+}
+
+// --- StreamActivatedJobs ---
+
+message StreamActivatedJobsRequest {
+  // type is the job type to subscribe to.
+  string type = 1;
+  // worker is the name of the worker.
+  string worker = 2;
+  // timeout is how long the worker has to complete each job.
+  google.protobuf.Duration timeout = 3;
+  // max_jobs is the max number of jobs to activate per poll cycle.
+  int32 max_jobs = 4;
+}
+
+// --- CompleteJob ---
+
+message CompleteJobRequest {
+  // job_key is the key of the job to complete.
+  uint64 job_key = 1;
+  // variables is the result variables as JSON string.
+  string variables = 2;
+}
+
+message CompleteJobResponse {}
+
+// --- BroadcastSignal ---
+
+message BroadcastSignalRequest {
+  // signal_name is the BPMN signal name.
+  string signal_name = 1;
+  // variables is optional payload as JSON string.
+  string variables = 2;
+}
+
+message BroadcastSignalResponse {
+  // key is the signal event key.
+  uint64 key = 1;
+}
+
+// --- PublishMessage ---
+
+message PublishMessageRequest {
+  // name is the BPMN message name.
+  string name = 1;
+  // correlation_key is the business correlation key.
+  string correlation_key = 2;
+  // variables is the message payload as JSON string.
+  string variables = 3;
+  // time_to_live is how long the message stays buffered.
+  google.protobuf.Duration time_to_live = 4;
+}
+
+message PublishMessageResponse {
+  // key is the message key.
+  uint64 key = 1;
+}
+
+// --- UpdateJobRetries ---
+
+message UpdateJobRetriesRequest {
+  // job_key is the key of the job to update.
+  uint64 job_key = 1;
+  // retries is the new retry count; must be positive.
+  int32 retries = 2;
+}
+
+message UpdateJobRetriesResponse {}
+
+// --- UpdateJobTimeout ---
+
+message UpdateJobTimeoutRequest {
+  // job_key is the key of the job to update.
+  uint64 job_key = 1;
+  // timeout is the new timeout duration.
+  google.protobuf.Duration timeout = 2;
+}
+
+message UpdateJobTimeoutResponse {}
+
+// --- DeleteResource ---
+
+message DeleteResourceRequest {
+  // resource_key is the key of the resource to delete.
+  uint64 resource_key = 1;
+}
+
+message DeleteResourceResponse {}
+
+// --- ActivateElement ---
+
+message ActivateElementRequest {
+  // process_instance_key is the key of the process instance.
+  uint64 process_instance_key = 1;
+  // scope_key is the element instance key of the ad-hoc subprocess.
+  uint64 scope_key = 2;
+  // element_id is the BPMN element id to activate inside the ad-hoc subprocess.
+  string element_id = 3;
+  // variables is optional variables to set on the ad-hoc scope (JSON string).
+  string variables = 4;
+}
+
+message ActivateElementResponse {
+  // element_instance_key is the key of the activated element instance.
+  uint64 element_instance_key = 1;
+}

@@ -1,0 +1,22 @@
+lint:
+  use:
+    - DEFAULT
+  enum_zero_value_suffix: _NONE
+  service_suffix: API
+  allow_comment_ignores: false
+
+deps:
+  - github.com/googleapis/googleapis
+
+generate:
+  inputs:
+    - directory: ./api/proto
+  plugins:
+    - name: go
+      out: .
+      opts:
+        paths: source_relative
+    - name: go-grpc
+      out: .
+      opts:
+        paths: source_relative

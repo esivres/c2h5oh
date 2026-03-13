@@ -1,0 +1,27 @@
+= ADR-0013: No DMN, Forms as deployable resources
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+Camunda/Zeebe поддерживает несколько типов ресурсов для деплоя: BPMN-процессы, DMN-решения (decision tables) и формы (Camunda Forms).
+
+DMN — это отдельная спецификация (Decision Model and Notation) со своим парсером, evaluator и моделью данных. Реализация полноценного DMN-движка — масштабная задача, сопоставимая по объёму с BPMN-движком.
+
+Формы в Zeebe — это JSON-ресурсы, которые деплоятся вместе с процессами и привязываются к userTask через `zeebe:formDefinition`. Движок не интерпретирует содержимое форм — только хранит и отдаёт клиентам.
+
+== Decision
+
+1. **DMN не поддерживается и не будет реализован.** BusinessRuleTask работает как обычный job (через `zeebe:taskDefinition`), без встроенного DMN evaluation.
+
+2. **Формы поддерживаются как deployable ресурсы.** Движок принимает JSON-формы при деплое, хранит их и позволяет получить по ключу. Интерпретация форм — ответственность клиента (UI).
+
+== Consequences
+
+* BusinessRuleTask не отличается от ServiceTask с точки зрения движка — оба создают job.
+* Нет необходимости в DMN-парсере, DMN-модели и DMN-evaluator.
+* Для форм потребуется хранилище (FormRepository) и intent (DeployForm), но без логики рендеринга.
+* Пользователи, которым нужен DMN, могут реализовать его как внешний worker.

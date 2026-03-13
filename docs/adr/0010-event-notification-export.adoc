@@ -1,0 +1,77 @@
+= ADR-0010: Event notification with collector pattern
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+Любое изменение состояния в движке должно порождать событие для внешних потребителей (audit, analytics, monitoring). Текущий подход — event notification (ADR обсуждение, `stream_processing.adoc`).
+
+Нужно:
+
+1. Собирать события в рамках транзакции
+2. Публиковать только после успешного commit
+3. Гарантировать порядок (monotonic position)
+4. Не привязываться к конкретному транспорту
+
+== Decision
+
+=== Event — факт об изменении
+
+Event описывает что произошло (past tense):
+
+[source,go]
+----
+type Event struct {
+    Position             uint64      // monotonic per partition
+    ValueType            ValueType   // PROCESS_INSTANCE, JOB, VARIABLE, ...
+    RecordType           RecordType  // CREATED, ACTIVATED, COMPLETED, ...
+    Key                  uint64
+    ProcessInstanceKey   uint64
+    Timestamp            time.Time
+    Value                []byte      // JSON snapshot of entity state
+}
+----
+
+=== Collector — сбор событий в рамках транзакции
+
+`Collector` накапливает события во время обработки intent. Репозитории вызывают `collector.Record(...)` при каждом изменении состояния. После успешного commit события отправляются в `Exporter`.
+
+Порядок в partition loop:
+
+----
+1. collector := NewCollector(lastPosition)
+2. store.Execute(ctx, handler)  // внутри: repo вызывает collector.Record(...)
+3. if commit OK: exporter.Export(ctx, collector.Events())
+4. collector.Reset()
+----
+
+=== Exporter — абстракция транспорта
+
+[source,go]
+----
+type Exporter interface {
+    Export(ctx context.Context, events []Event) error
+}
+----
+
+Реализации: message queue, database, file, webhook, etc. `MultiExporter` для fan-out. `ExporterFunc` для простых случаев.
+
+=== Готовность к Event Sourcing
+
+Архитектура не исключает переход на event sourcing:
+
+* `Position` — монотонный счётчик, аналог offset в логе
+* `Value` — полный snapshot сущности, достаточно для replay
+* `Collector` можно заменить на write-ahead log writer
+
+== Consequences
+
+* **Positive:** События собираются транзакционно — не теряются при rollback.
+* **Positive:** `Exporter` абстрагирует транспорт — подменяем без изменения бизнес-логики.
+* **Positive:** `Position` даёт строгий порядок внутри партиции.
+* **Positive:** `MultiExporter` позволяет fan-out без дополнительной инфраструктуры.
+* **Positive:** Совместимо с будущим переходом на event sourcing.
+* **Negative:** Collector должен быть доступен репозиториям — нужна передача через context или Store.

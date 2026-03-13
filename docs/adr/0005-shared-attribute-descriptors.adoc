@@ -1,0 +1,40 @@
+= ADR-0005: Shared attribute descriptors via DOM
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+In Java Camunda, each type registers its own `Attribute<T>` instances tied to `ModelElementType`. In Go, with all types in one package and struct embedding, we need attributes to work across the type hierarchy.
+
+For example, `id` attribute is defined on `BaseElement` but must be readable/writable on `ServiceTask`, `Gateway`, `Process`, etc. — all types that embed `BaseElementImpl`.
+
+== Decision
+
+Use package-level `*Attribute[T]` variables that operate on the DOM element directly, not on a specific Go type:
+
+[source,go]
+----
+var AttrBaseElementId *Attribute[string]
+
+// Initialized during type registration:
+AttrBaseElementId = tb.StringAttribute(BPMN_ATTRIBUTE_ID).IdAttribute().Build()
+----
+
+`Attribute[T].Get(instance)` reads from `instance.GetDomElement()`, not from a Go struct field. This means any type that embeds `BaseElementImpl` can use `AttrBaseElementId.Get(self)` — it will read the `id` attribute from the underlying XML DOM element.
+
+Shared attribute vars used across multiple types:
+
+* `AttrBaseElementId`, `AttrName` — used by all `BaseElement` subtypes
+* `AttrZeebeSource`, `AttrZeebeTarget` — shared by `ZeebeInput` and `ZeebeOutput`
+* `AttrZeebeOutputCollection`, `AttrZeebeOutputElement` — shared by `ZeebeLoopCharacteristics` and `ZeebeAdHoc`
+
+== Consequences
+
+* **Positive:** Single attribute instance works for the entire type hierarchy. No duplication.
+* **Positive:** Attributes are always in sync with XML DOM — no separate state to maintain.
+* **Positive:** Round-trip fidelity — reading and writing goes through DOM, preserving original XML structure.
+* **Negative:** Attribute access involves DOM traversal (string-based lookup). Acceptable performance trade-off for correctness.
+* **Negative:** Package-level vars initialized in `init()`/registration functions — ordering matters.

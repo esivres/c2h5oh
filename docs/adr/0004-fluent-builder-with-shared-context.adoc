@@ -1,0 +1,74 @@
+= ADR-0004: Fluent builder with shared context
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+Java Camunda uses abstract generic builders with CRTP (`AbstractFlowNodeBuilder<B extends AbstractFlowNodeBuilder<B, E>, E>`) to provide fluent API where each method returns the correct builder subtype.
+
+Go doesn't have CRTP or covariant return types. Options:
+
+1. Single builder struct with all methods (loses type safety)
+2. Separate builders with method duplication (lots of boilerplate)
+3. Embedding + shared context pointer
+
+== Decision
+
+Use a shared `builderCtx` struct passed by pointer to all builders:
+
+[source,go]
+----
+type builderCtx struct {
+    bmi          *BpmnModelInstance
+    process      Process
+    currentNode  FlowNode
+    gatewayStack []Gateway
+    condExpr     string
+    defaultFlow  bool
+    diGenerated  bool
+}
+----
+
+`AbstractBuilder` embeds `*builderCtx` and provides flow-creation methods (`ServiceTask()`, `EndEvent()`, etc.) that return specific builder types:
+
+[source,go]
+----
+type AbstractBuilder struct {
+    ctx *builderCtx
+}
+
+func (b *AbstractBuilder) ServiceTask(id string) *ServiceTaskBuilder {
+    node := b.ctx.createFlowNodeAndConnect(BPMN_ELEMENT_SERVICE_TASK, id)
+    return &ServiceTaskBuilder{
+        AbstractBuilder: AbstractBuilder{ctx: b.ctx},
+        element: node.(ServiceTask),
+    }
+}
+----
+
+Specific builders embed `AbstractBuilder` and add type-specific methods:
+
+[source,go]
+----
+type ServiceTaskBuilder struct {
+    AbstractBuilder
+    element ServiceTask
+}
+
+func (b *ServiceTaskBuilder) ZeebeJobType(jobType string) *ServiceTaskBuilder {
+    // ...
+    return b
+}
+----
+
+== Consequences
+
+* **Positive:** Fluent chaining works naturally: `ServiceTask("id").Name("x").ZeebeJobType("y").EndEvent("e")`.
+* **Positive:** Type-specific methods (e.g., `ZeebeJobType`) only appear on the correct builder.
+* **Positive:** Flow-creation methods (from `AbstractBuilder`) are available on all builders via embedding.
+* **Positive:** Shared context means gateway stack, pending conditions, and current node are consistent across builder transitions.
+* **Negative:** Returning a different builder type from each method means you can't go "back" to a previous builder type without `MoveToNode()`.
+* **Negative:** Some method duplication (e.g., `Name()` on each builder) since Go doesn't have covariant returns.

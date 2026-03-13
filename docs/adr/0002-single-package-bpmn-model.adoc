@@ -1,0 +1,41 @@
+= ADR-0002: Single package for BPMN model types
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+Java Camunda bpmn-model uses separate packages: `instance/` for interfaces, `impl/` for implementations, `builder/` for builders. In Go, this structure would cause import cycles because:
+
+* Builders need to create instances (import `instance/` and `impl/`)
+* Instances need to reference the model (import root package)
+* Registration functions need both builders and instances
+
+Go does not allow circular imports. Splitting into many packages would require complex interface gymnastics or dependency injection patterns that add unnecessary complexity.
+
+== Decision
+
+Keep all BPMN model types (interfaces, implementations, builders, registration) in a single package `pkg/bpmn_model`.
+
+Organize by file instead of by package:
+
+* `bpmn_interfaces.go` — core BPMN interfaces (Definitions, Process, FlowNode, etc.)
+* `bpmn_impl.go` — core implementations
+* `bpmn_tasks.go` — Activity, Task types and subtypes
+* `bpmn_gateways.go` — Gateway types
+* `bpmn_events.go` — Event types and EventDefinitions
+* `bpmn_elements.go` — Message, Signal, Collaboration, etc.
+* `bpmn_zeebe.go` — Zeebe extension types
+* `bpmn_di.go` — BPMN DI (Diagram Interchange) types
+* `process_builder.go` — fluent builder
+* `query.go` — Query API
+* `validation.go` — validators
+
+== Consequences
+
+* **Positive:** No import cycles. Simple, flat structure. Easy to navigate.
+* **Positive:** All types visible to each other — builders can directly create instances, validators can access all types.
+* **Negative:** Large package with many exported symbols. Mitigated by clear file organization and naming conventions.
+* **Negative:** All symbols share one namespace — prefix conventions (e.g., `AttrServiceTaskImplementation`, `BPMN_ELEMENT_SERVICE_TASK`) help avoid collisions.

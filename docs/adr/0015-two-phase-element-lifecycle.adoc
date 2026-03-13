@@ -1,0 +1,104 @@
+= ADR-0015: Two-phase element lifecycle (ElementActivated / ElementCompleted)
+:revdate: 2026-03-11
+
+== Status
+
+Accepted
+
+== Context
+
+Behaviors `activateElement` и `completeElement` исторически содержали большие switch-блоки по `elementType` (~750 и ~820 строк). Это приводило к:
+
+* **Нарушению SRP** — один файл отвечал за логику всех BPMN-типов.
+* **Сложности тестирования** — невозможно протестировать type-specific логику изолированно.
+* **Конфликтам при параллельной разработке** — любые изменения в BPMN-типах затрагивали одни и те же файлы.
+* **Жёсткой связности** — добавление нового типа требовало модификации switch.
+
+Архитектура behaviors (ADR-0009) уже поддерживает dispatch по intent type через Registry, но не позволяла делать вторичный dispatch по element type.
+
+== Decision
+
+=== Двухфазная модель
+
+Жизненный цикл элемента разделён на две фазы, каждая — отдельный intent:
+
+[source]
+----
+Phase 1 (generic)         Phase 2 (type-specific)
+ActivateElementIntent  →  ElementActivatedIntent  →  type-specific behavior
+CompleteElementIntent  →  ElementCompletedIntent  →  type-specific behavior
+----
+
+**Phase 1** — общая логика, одинаковая для всех типов:
+
+* `activateElement`: создаёт ElementInstance, применяет input mappings, проверяет MI, возвращает `ElementActivatedIntent`
+* `completeElement`: обновляет состояние в Completed, применяет output mappings, возвращает `ElementCompletedIntent`
+
+**Phase 2** — type-specific логика в отдельных файлах:
+
+* `activatedJobTask` — serviceTask, userTask, scriptTask, businessRuleTask, sendTask → CreateJob
+* `activatedCatchEvent` — intermediateCatchEvent, boundaryEvent → timer/message/signal detection
+* `activatedParallelGateway` — parallelGateway, inclusiveGateway → join logic
+* `activatedSubProcess` — subProcess → activate inner startEvent
+* `activatedCallActivity` — callActivity → create child process
+* `activatedAdHocSubProcess` — adHocSubProcess → evaluate activeElementsCollection
+* `activatedReceiveTask` — receiveTask → open message subscription
+* `activatedThrowEvent` — intermediateThrowEvent → signal throw
+* `activatedAutoComplete` — default fallback (startEvent, manualTask, gateways)
+* `completedExclusiveGateway` — evaluate conditions, take one flow
+* `completedInclusiveGateway` — evaluate conditions, take all true
+* `completedEndEvent` — error/signal/terminate/escalation/compensation + scope completion
+* `completedBoundaryEvent` — take outgoing + interrupt attached
+* `completedCatchEvent` — take outgoing + cancel event-based gateway siblings
+* `completedThrowEvent` — take outgoing + compensation/link/escalation
+* `completedDefault` — take all outgoing flows + ad-hoc completion check
+
+=== Composite key registry
+
+Registry расширен вторичным dispatch по element type:
+
+[source,go]
+----
+type Registry struct {
+    behaviors map[intent.Type]Behavior              // primary: by intent type
+    typed     map[string]Behavior                   // composite: "INTENT_TYPE:elementType"
+}
+
+func (r *Registry) RegisterWithElementType(t intent.Type, elementType string, b Behavior)
+func (r *Registry) LookupWithElementType(t intent.Type, elementType string) Behavior
+----
+
+`LookupWithElementType` сначала ищет по composite key, затем fallback на primary key.
+
+=== Processor dispatch
+
+Processor проверяет, реализует ли intent интерфейс `ElementTyped`:
+
+[source,go]
+----
+type ElementTyped interface {
+    GetElementType() string
+}
+----
+
+Если да — использует `LookupWithElementType` для вторичного dispatch. Это позволяет Processor маршрутизировать phase 2 intents к type-specific behaviors без каких-либо switch-блоков.
+
+=== Новые intent types
+
+[source,go]
+----
+ElementActivated Type = "ELEMENT_ACTIVATED"
+ElementCompleted Type = "ELEMENT_COMPLETED"
+----
+
+Оба intent struct содержат: `ElementInstanceKey`, `ProcessDefinitionKey`, `ElementId`, `ElementType`, `FlowScopeKey`. `ElementActivatedIntent` дополнительно содержит `JobType`.
+
+== Consequences
+
+* **Positive:** Каждый BPMN-тип — отдельный файл с единственной ответственностью (10-60 строк вместо 750+).
+* **Positive:** Type-specific behaviors тестируются изолированно.
+* **Positive:** Добавление нового BPMN-типа = новый файл + одна строка в register.go.
+* **Positive:** Phase 1 и Phase 2 могут развиваться независимо.
+* **Positive:** Processor не содержит никакой BPMN-специфичной логики — только generic dispatch.
+* **Negative:** Два дополнительных intent type на каждый lifecycle event — больше intents в потоке.
+* **Negative:** Тесты требуют двухфазного helper'а (`executeActivation`, `executeCompletion`) вместо прямого вызова behavior.

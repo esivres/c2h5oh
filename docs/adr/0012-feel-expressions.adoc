@@ -1,0 +1,35 @@
+= ADR-0012: FEEL Expression Evaluation
+
+== Status
+Accepted
+
+== Context
+The processing engine needs to evaluate FEEL (Friendly Enough Expression Language) expressions in several contexts:
+
+* Condition expressions on sequence flows (exclusive gateway routing)
+* IO mappings — ZeebeInput (source → target at element activation) and ZeebeOutput (source → target at element completion)
+* Future: correlation key expressions, timer expressions
+
+== Decision
+Use `github.com/pbinitiative/feel` as the FEEL evaluation library.
+
+=== Rationale
+* Already used in `krf-adhoc` project — proven in production
+* Pure Go implementation, no CGo dependencies
+* Simple API: `feel.EvalStringWithScope(expression, scope)`
+* Supports core FEEL operations needed for BPMN routing and mappings
+
+=== Integration
+* Package `pkg/processing/feel` wraps the library with:
+** `Eval(expression, scope)` — evaluates expression, normalizes result types (FEEL `Number` → Go `int64`/`float64`)
+** `EvalBool(expression, scope)` — evaluates and asserts boolean result
+** Automatic `=` prefix stripping (Zeebe convention)
+* `take_sequence_flow.go` — uses `EvalBool` for condition expressions
+* `io_mapping.go` — uses `Eval` for input/output mapping source expressions
+* Scope loading via `loadScope()` helper — reads variables from storage, unmarshals JSON values
+
+== Consequences
+* FEEL expressions in sequence flows now work — exclusive gateways can route based on variables
+* IO mappings (ZeebeInput/ZeebeOutput) are applied during element activation/completion
+* Expression evaluation errors produce incidents (fail behavior → incident)
+* FEEL number types are normalized to Go native types for JSON compatibility

@@ -1,0 +1,40 @@
+= ADR-0001: etree as XML DOM library
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+BPMN Model API requires a DOM-like abstraction for XML manipulation: reading, modifying, and writing XML while preserving namespaces, attributes, and element order. Java Camunda uses `org.w3c.dom`.
+
+Go's standard `encoding/xml` is stream-oriented (SAX-like) and doesn't provide a DOM tree. We need a library that supports:
+
+* Tree-based navigation (parent, children, siblings)
+* Namespace-aware element and attribute access
+* Preserving XML structure during round-trips (parse -> modify -> serialize)
+* Creating elements programmatically
+
+Candidates considered:
+
+* `encoding/xml` — no DOM, stream-only
+* `github.com/beevik/etree` — lightweight DOM, namespace support, active maintenance
+* `github.com/lestrrat-go/libxml2` — CGo wrapper, heavy dependency
+
+== Decision
+
+Use `github.com/beevik/etree` v1.6.0 as the XML DOM library.
+
+Wrap etree in our own `pkg/bpmn_model/xml/xml.go` abstraction layer (`Element`, `Document`) to:
+
+* Provide namespace-aware helpers (`GetChildElementsByNS`, `GetAttributeByNS`)
+* Use `*etree.Element` as map keys for element-to-instance lookup (`elementsByDom`)
+* Keep the option to swap the underlying XML library in the future
+
+== Consequences
+
+* **Positive:** Lightweight, pure Go, no CGo. Simple API. Good namespace support. Preserves XML formatting on round-trip.
+* **Positive:** etree's `*Element` pointers work as map keys for O(1) lookup from DOM to model instances.
+* **Negative:** etree doesn't validate against XSD. Validation is done at the model level instead.
+* **Negative:** Vendor dependency, though the library is stable and has minimal transitive deps.

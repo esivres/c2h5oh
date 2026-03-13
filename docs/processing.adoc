@@ -1,0 +1,196 @@
+= Processing Engine — Developer Guide
+:revdate: 2026-03-06
+
+== Architecture Overview
+
+----
+pkg/processing/
+├── storage/         # Repository interfaces and entity models
+│   ├── sql/         # SQL implementation (default, SQLite/PostgreSQL)
+│   └── conformance.go  # Storage conformance test suite
+├── intent/          # Intent types (data, no logic)
+├── behavior/        # Intent handlers (logic)
+├── export/          # Event notification system
+└── engine/          # Stream processor (partition loop)
+----
+
+=== Data Flow
+
+----
+External Command
+    ↓
+Processor.Submit(intent)
+    ↓
+Priority Queue (High → Normal → Low)
+    ↓
+Processor.Run loop:
+    1. Dequeue intent
+    2. Registry.Lookup(intentType) → Behavior
+    3. behavior.AsHandler(b, intent) → storage.Handler
+    4. store.Execute(ctx, handler) → []follow-up intents
+    5. exporter.Export(ctx, collector.Events())
+    6. Enqueue follow-up intents
+    ↓
+Repeat
+----
+
+== Adding a New Behavior
+
+=== Step 1: Define the intent
+
+Add a new intent type in `pkg/processing/intent/`:
+
+[source,go]
+----
+// intent/my_intent.go
+package intent
+
+type MyNewIntent struct {
+    Header
+    // type-specific fields
+    SomeField string
+}
+
+func (i *MyNewIntent) IntentType() Type { return MyNewAction }
+----
+
+Add the type constant in `intent/intent.go`:
+
+[source,go]
+----
+const (
+    MyNewAction Type = "MY_NEW_ACTION"
+)
+----
+
+=== Step 2: Write the behavior
+
+Create a behavior function in `pkg/processing/behavior/`:
+
+[source,go]
+----
+// behavior/my_behavior.go
+package behavior
+
+func myNewAction(ctx context.Context, s storage.Store, i *intent.MyNewIntent) ([]intent.Intent, error) {
+    // 1. Read/write storage via repositories
+    // 2. Return follow-up intents (or nil)
+    return nil, nil
+}
+----
+
+Key rules:
+
+* Use the **concrete intent type** in the signature (not `intent.Intent`).
+* Access storage only through `s.SomeRepository()`.
+* Return follow-up intents with `Origin: intent.Internal`.
+* Don't call `store.Execute` inside a behavior — you're already in a transaction.
+
+=== Step 3: Register the behavior
+
+Add to `DefaultRegistry()` in `behavior/register.go`:
+
+[source,go]
+----
+r.Register(intent.MyNewAction, Typed(myNewAction))
+----
+
+`Typed()` wraps your function and handles the type assertion automatically.
+
+=== Step 4: Test the behavior
+
+[source,go]
+----
+func TestMyNewAction(t *testing.T) {
+    store := newMockStore()
+    i := &intent.MyNewIntent{
+        Header:    intent.Header{Key: 1, Origin: intent.External},
+        SomeField: "value",
+    }
+
+    result, err := myNewAction(context.Background(), store, i)
+    require.NoError(t, err)
+    // assert on result, storage state, etc.
+}
+----
+
+== Adding a New Storage Implementation
+
+=== Step 1: Implement all repository interfaces
+
+[source,go]
+----
+type myStore struct { /* ... */ }
+
+func (s *myStore) ProcessDefinitions() storage.ProcessDefinitionRepository { /* ... */ }
+func (s *myStore) ProcessInstances() storage.ProcessInstanceRepository     { /* ... */ }
+func (s *myStore) Variables() storage.VariableRepository                   { /* ... */ }
+func (s *myStore) Jobs() storage.JobRepository                             { /* ... */ }
+func (s *myStore) Timers() storage.TimerRepository                         { /* ... */ }
+func (s *myStore) MessageSubscriptions() storage.MessageSubscriptionRepository { /* ... */ }
+func (s *myStore) Incidents() storage.IncidentRepository                   { /* ... */ }
+func (s *myStore) Execute(ctx, handler) ([]intent.Intent, error)           { /* ... */ }
+----
+
+=== Step 2: Run the conformance suite
+
+[source,go]
+----
+func TestMyStore_Conformance(t *testing.T) {
+    store := NewMyStore(/* ... */)
+    storage.RunConformanceSuite(t, store)
+}
+----
+
+The conformance suite has **46 tests** covering:
+
+* All 7 repository types (CRUD, queries, state transitions)
+* Transaction commit and rollback
+* Edge cases (not found, TTL expiry, etc.)
+
+If all 46 tests pass, your storage implementation is compatible.
+
+=== Step 3: Use with the processor
+
+[source,go]
+----
+proc := engine.NewProcessor(engine.Config{
+    PartitionId: 1,
+    Store:       myStore,
+    Registry:    behavior.DefaultRegistry(),
+    Exporter:    myExporter,
+})
+proc.Run(ctx)
+----
+
+== Adding a New Exporter
+
+Implement the `export.Exporter` interface:
+
+[source,go]
+----
+type Exporter interface {
+    Export(ctx context.Context, events []Event) error
+}
+----
+
+Use `export.MultiExporter` for fan-out:
+
+[source,go]
+----
+exporter := export.NewMultiExporter(
+    kafkaExporter,
+    metricsExporter,
+    auditLogExporter,
+)
+----
+
+== Key Design Decisions
+
+See `docs/adr/` for architecture decision records:
+
+* ADR-0007: Storage abstraction with repository pattern
+* ADR-0008: Intent as data, behavior as handler
+* ADR-0009: Behavior registry with typed generic wrapper
+* ADR-0010: Event notification with collector pattern
+* ADR-0011: Stream processor — partition processing loop

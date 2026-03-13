@@ -1,0 +1,88 @@
+= ADR-0011: Stream processor — partition processing loop
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+Нужен компонент, который связывает storage, intent, behavior и export в единый цикл обработки. Это "сердце" BPMN-движка — partition processing loop.
+
+== Decision
+
+=== Processor — один на партицию
+
+[source,go]
+----
+type Processor struct {
+    partitionId uint8
+    store       storage.Store
+    registry    *behavior.Registry
+    exporter    export.Exporter
+    queue       *Queue
+    keyGen      *KeyGenerator
+    collector   *export.Collector
+}
+----
+
+=== Processing loop
+
+`Run(ctx)` блокирует, обрабатывает интенты последовательно:
+
+----
+1. Dequeue intent из priority queue
+2. Lookup behavior из registry
+3. behavior.AsHandler(b, intent) → storage.Handler
+4. store.Execute(ctx, handler) → []follow-up intents, error
+5. exporter.Export(ctx, collector.Events())
+6. Enqueue follow-up intents
+----
+
+Каждый intent обрабатывается атомарно. Между интентами состояние консистентно.
+
+=== Priority queue
+
+Три уровня приоритета (High/Normal/Low). High всегда обрабатывается первым.
+
+[cols="1,1"]
+|===
+| Priority | Intent types
+
+| High
+| DeployProcess, CreateProcessInstance, CreateJob, ActivateJob, SetVariables
+
+| Normal
+| ActivateElement, CompleteElement, CompleteJob, FailJob, CreateIncident
+
+| Low
+| TakeSequenceFlow, timers, messages
+|===
+
+=== Key generation
+
+`uint64` с partition prefix в старших 8 битах:
+
+[source,go]
+----
+func (kg *KeyGenerator) Next() uint64 {
+    seq := kg.sequence.Add(1)
+    return kg.prefix | seq  // prefix = partitionId << 56
+}
+----
+
+`PartitionOf(key)` извлекает partition id за O(1).
+
+=== Error handling
+
+При ошибке обработки intent → `CreateIncidentIntent` добавляется в очередь.
+
+NOTE: Retry с backoff для External intents — TODO. Сейчас для обоих типов создаётся incident.
+
+== Consequences
+
+* **Positive:** Простой, последовательный цикл — легко рассуждать о correctness.
+* **Positive:** Priority queue предотвращает starvation важных операций.
+* **Positive:** Key generation O(1), partition lookup O(1).
+* **Positive:** Follow-up intents добавляются в конец очереди (breadth-first, не stack).
+* **Negative:** Последовательная обработка — throughput ограничен одним ядром на партицию. Масштабирование — через увеличение числа партиций.

@@ -1,0 +1,66 @@
+= ADR-0007: Storage abstraction with repository pattern
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+POC использовал BoltDB (bbolt) напрямую — бакеты, транзакции, protobuf сериализация были жёстко привязаны к конкретной реализации. Это не позволяет:
+
+1. Подменить хранилище (SQL, in-memory для тестов)
+2. Тестировать бизнес-логику изолированно от storage
+3. Разделить ответственность между persistence и domain logic
+
+== Decision
+
+=== Repository pattern с мелкими интерфейсами
+
+Каждая сущность получает свой репозиторий:
+
+* `ProcessDefinitionRepository` — иммутабельные определения процессов
+* `ProcessInstanceRepository` — процессы и element instances
+* `VariableRepository` — переменные со scope
+* `JobRepository` — jobs для внешних workers
+* `TimerRepository` — таймеры
+* `MessageSubscriptionRepository` — подписки + буфер сообщений
+* `IncidentRepository` — инциденты
+
+=== Functional unit of work (Handler/HandlerFunc)
+
+По аналогии с `net/http` Handler/HandlerFunc:
+
+[source,go]
+----
+type Handler interface {
+    Handle(ctx context.Context, s Store) ([]Intent, error)
+}
+
+type HandlerFunc func(ctx context.Context, s Store) ([]Intent, error)
+----
+
+`Store.Execute(ctx, handler)` оборачивает вызов handler в транзакцию — commit при успехе, rollback при ошибке.
+
+=== SQL как дефолтная реализация
+
+Стандартная реализация — SQL. Конкретный драйвер не должен протекать наружу — SQL-специфика скрыта за интерфейсами репозиториев.
+
+Пакетная структура:
+
+----
+pkg/processing/storage/       — интерфейсы и модели
+pkg/processing/storage/sql/   — SQL реализация (default)
+----
+
+=== Ключи
+
+На уровне storage ключи — просто `uint64`. Partition prefix (старшие 8 бит) добавляется слоем выше при генерации ключей.
+
+== Consequences
+
+* **Positive:** Хранилище подменяемо — SQL, in-memory, BoltDB, что угодно.
+* **Positive:** Handler/HandlerFunc паттерн привычен Go-разработчикам.
+* **Positive:** Мелкие репозитории — легко мокать, тестировать, понимать.
+* **Positive:** SQL не протекает наружу — можно менять движок БД.
+* **Negative:** Абстракция добавляет indirection. SQL-специфичные оптимизации (JOIN, batch insert) могут быть сложнее за интерфейсом.

@@ -1,0 +1,56 @@
+= ADR-0006: Zeebe extensions access via generic helpers
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+Zeebe extensions (`zeebe:taskDefinition`, `zeebe:ioMapping`, `zeebe:adHoc`, etc.) are stored as child elements of `bpmn:extensionElements`. Accessing them requires:
+
+1. Getting the `extensionElements` container from a `BaseElement`
+2. Finding a child element of the right namespace and type
+3. Casting to the correct Go interface
+
+This pattern repeats for every Zeebe extension type. Java uses `ModelElementInstance.getExtensionElements()` with type-safe methods.
+
+== Decision
+
+Provide two generic helper functions:
+
+[source,go]
+----
+// Read: get existing extension element
+func GetSingleExtensionElement[T ModelElementInstance](element BaseElement) (T, bool)
+
+// Write: get or create extension element (used by builders)
+func getOrCreateExtElement[T ModelElementInstance](
+    mi *ModelInstance, element BaseElement, ns string, localName string) T
+----
+
+`GetSingleExtensionElement[T]` iterates extension element children and returns the first one that satisfies interface `T` via type assertion.
+
+`getOrCreateExtElement[T]` first checks for an existing element, then creates one if not found — using the registered type provider.
+
+Usage:
+
+[source,go]
+----
+// Reading
+td, ok := GetSingleExtensionElement[ZeebeTaskDefinition](serviceTask)
+if ok {
+    fmt.Println(td.GetType())
+}
+
+// Building (internal)
+td := getOrCreateExtElement[ZeebeTaskDefinition](mi, element, ZEEBE_NS, ZEEBE_ELEMENT_TASK_DEFINITION)
+td.SetType("my-worker")
+----
+
+== Consequences
+
+* **Positive:** Type-safe access to extensions with Go generics — no manual casting.
+* **Positive:** `getOrCreateExtElement` makes builder code concise — idempotent, handles both first-set and update.
+* **Positive:** Works for any registered extension type, including custom ones.
+* **Negative:** Go generics can't be methods on a struct (no `element.GetExtension[T]()`), so we use standalone functions.

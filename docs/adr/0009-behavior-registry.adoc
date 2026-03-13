@@ -1,0 +1,74 @@
+= ADR-0009: Behavior registry with typed generic wrapper
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+Intent — чистые данные (ADR-0008). Нужен механизм для маппинга intent type → логика обработки. Логика должна:
+
+1. Получать конкретный тип intent (не `interface{}`)
+2. Работать со storage через репозитории
+3. Возвращать follow-up intents
+4. Быть тестируемой с mock storage
+
+== Decision
+
+=== Behavior — функциональный тип
+
+[source,go]
+----
+type Behavior func(ctx context.Context, s storage.Store, i intent.Intent) ([]intent.Intent, error)
+----
+
+=== Typed[T] — generic wrapper для type safety
+
+[source,go]
+----
+func Typed[T intent.Intent](fn func(ctx, Store, T) ([]intent.Intent, error)) Behavior
+----
+
+Конкретные behavior пишутся с типизированной сигнатурой:
+
+[source,go]
+----
+func deployProcess(ctx context.Context, s storage.Store, i *intent.DeployProcessIntent) ([]intent.Intent, error) {
+    // работает с конкретным типом, без type assertion
+}
+
+// Регистрация:
+registry.Register(intent.DeployProcess, Typed(deployProcess))
+----
+
+`Typed` автоматически выполняет type assertion при вызове.
+
+=== Registry — маппинг IntentType → Behavior
+
+[source,go]
+----
+type Registry struct { behaviors map[intent.Type]Behavior }
+
+func (r *Registry) Register(t intent.Type, b Behavior)
+func (r *Registry) Lookup(t intent.Type) Behavior
+----
+
+`DefaultRegistry()` создаёт registry со всеми стандартными behavior.
+
+=== AsHandler — мост к storage.Execute
+
+[source,go]
+----
+func AsHandler(b Behavior, i intent.Intent) storage.Handler
+----
+
+Оборачивает вызов behavior в `storage.HandlerFunc` для транзакционного выполнения через `store.Execute(ctx, handler)`.
+
+== Consequences
+
+* **Positive:** Behavior пишется с конкретным типом intent — compile-time safety.
+* **Positive:** `Typed[T]` убирает boilerplate type assertion.
+* **Positive:** Registry расширяема — можно добавить custom behaviors.
+* **Positive:** `AsHandler` чисто связывает behavior → storage transaction.
+* **Negative:** Runtime type assertion внутри `Typed` — паника при неправильной регистрации. Приемлемо, т.к. ошибка будет при старте.

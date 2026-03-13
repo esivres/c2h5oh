@@ -1,0 +1,149 @@
+= Ethanol BPMN
+
+[quote]
+ Даже если спирт замерзнет, все равно его не брошу, потому что спирт хороший.
+
+
+An attempt to vibe-code an open fork of Camunda 8, fixing what I don't like about it. Heavily inspired by: https://github.com/nitram509/lib-bpmn-engine
+
+link:README.adoc[Русская версия]
+
+== Status
+
+[cols="1,1,1"]
+|===
+| Component | Status | Description
+
+| `pkg/bpmn_model`
+| DONE
+| BPMN 2.0 Model API — parsing, builder, Zeebe extensions, DI, Query, validation
+
+| `pkg/bpmn_asserts`
+| DONE
+| Fluent test assertions for Zeebe — processes, jobs, incidents, messages, forms
+
+| Stream Processing Engine
+| Design phase
+| BPMN process execution engine
+|===
+
+== Package structure
+
+----
+rumunda/
+├── pkg/
+│   ├── bpmn_model/       # BPMN 2.0 Model API (parsing + builder)
+│   └── bpmn_asserts/     # Test assertions for Zeebe processes
+├── docs/
+│   ├── bpmn_model.adoc       # BPMN Model API docs (RU)
+│   ├── bpmn_model_en.adoc    # BPMN Model API docs (EN)
+│   └── stream_processing.adoc
+├── go.mod
+└── README.adoc
+----
+
+== Quick Start
+
+=== BPMN Model: parsing
+
+[source,go]
+----
+import bpmn "github.com/esivres/c2h5oh/pkg/bpmn_model"
+
+// Read a BPMN file
+bmi, err := bpmn.ReadFromFile("process.bpmn")
+
+// Get all service tasks
+for _, task := range bpmn.GetTypedElements[bpmn.ServiceTask](bmi.ModelInstance) {
+    fmt.Printf("Task: %s, type: %s\n", task.GetId(), task.GetName())
+}
+----
+
+=== BPMN Model: creating a process
+
+[source,go]
+----
+import bpmn "github.com/esivres/c2h5oh/pkg/bpmn_model"
+
+bmi := bpmn.CreateExecutableProcess("my-process").
+    StartEvent("start").
+    ServiceTask("call-api").Name("Call API").
+        ZeebeJobType("api-worker").
+        ZeebeInput("=requestData", "input").
+        ZeebeOutput("=response", "result").
+    EndEvent("end").
+    Done()
+
+// Save to file
+bpmn.WriteToFile(bmi, "my-process.bpmn")
+----
+
+=== BPMN Model: AdHoc SubProcess (AI Agent)
+
+[source,go]
+----
+bmi := bpmn.CreateExecutableProcess("ai-agent").
+    StartEvent("start").
+    AdHocSubProcess("agent").Name("AI Agent").
+        ZeebeJobType("kamundarf:adhoc:v1").
+        ZeebeAdHocConfig("toolCallResults",
+            "={id: _meta.id, name: _meta.name, content: toolCallResult}").
+        ZeebeInput("=userQuery", "userQuery").
+    EndEvent("end").
+    Done()
+----
+
+=== BPMN Assertions: testing processes
+
+[source,go]
+----
+import bpmn_assertions "github.com/esivres/c2h5oh/pkg/bpmn_asserts"
+
+// Wait for an event
+bpmn_assertions.Events().
+    ProcessInstanceCompleted(processInstanceKey).
+    WaitOn(s.RecordStream, 30*time.Second)
+
+// Fluent assertions
+bpmn_assertions.ForProcessInstance(s.T(), s.RecordStream, processInstanceKey).
+    WithContext(ctx).
+    IsCompleted().
+    HasPassedElement("serviceTask1").
+    HasPassedElementsInOrder("start", "serviceTask1", "end").
+    HasNoIncidents().
+    HasVariableWithValue("result", "expected")
+----
+
+== Documentation
+
+* link:docs/bpmn_model_en.adoc[BPMN Model API (EN)] — full documentation with builder examples, Query API, validation
+* link:docs/bpmn_model.adoc[BPMN Model API (RU)] — Russian version
+* link:docs/stream_processing.adoc[Stream Processing] — engine architecture (in progress)
+
+== Dependencies
+
+|===
+| Library | Purpose
+
+| `github.com/beevik/etree` | XML DOM (replaces Java's org.w3c.dom)
+| `github.com/stretchr/testify` | Test assertions
+|===
+
+== Key design decisions
+
+|===
+| Java (Camunda/Zeebe) | Go (Rumunda)
+
+| Interface + Impl class | Interface + struct embedding
+| Abstract generic builders | Struct composition + Go generics
+| DOM (org.w3c.dom) | etree (github.com/beevik/etree)
+| Generics `<T extends X>` | Go generics `[T X]`
+| Exceptions | error return values
+| Maven multi-module | Single Go module
+|===
+
+== Credits
+
+* https://github.com/camunda/camunda[Camunda 8 / Zeebe] — the original engine
+* https://github.com/nitram509/lib-bpmn-engine[lib-bpmn-engine] — Go BPMN engine that inspired this project
+* Java bpmn-model and xml-model from Zeebe — the basis for `pkg/bpmn_model`

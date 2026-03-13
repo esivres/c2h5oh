@@ -1,0 +1,53 @@
+= ADR-0003: Marker methods for type discrimination
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+Go uses structural typing for interfaces. Given the BPMN type hierarchy:
+
+----
+Event -> CatchEvent -> StartEvent
+Event -> ThrowEvent -> EndEvent
+----
+
+Both `StartEventImpl` and `EndEventImpl` embed `EventImpl` and satisfy the same structural interface. This means `GetTypedElements[EndEvent]` would also match `StartEvent` instances, because both have the same method set from embedding.
+
+Java solves this with nominal typing — `StartEventImpl implements StartEvent` is explicit. Go doesn't have this.
+
+== Decision
+
+Add unexported marker methods to each concrete interface:
+
+[source,go]
+----
+type StartEvent interface {
+    CatchEvent
+    implStartEvent()  // marker
+}
+
+type EndEvent interface {
+    ThrowEvent
+    implEndEvent()    // marker
+}
+----
+
+Each implementation defines its own marker:
+
+[source,go]
+----
+func (*StartEventImpl) implStartEvent() {}
+func (*EndEventImpl) implEndEvent()     {}
+----
+
+Since `StartEventImpl` doesn't have `implEndEvent()`, it won't satisfy `EndEvent`. This restores nominal typing behavior for Go interfaces.
+
+== Consequences
+
+* **Positive:** `GetTypedElements[T]` and type assertions work correctly — no false matches.
+* **Positive:** Zero runtime cost — marker methods are never called, only used for compile-time interface satisfaction.
+* **Positive:** Clear pattern — every BPMN type gets `impl<TypeName>()`.
+* **Negative:** Boilerplate — every new type needs a marker method. Acceptable trade-off for correctness.

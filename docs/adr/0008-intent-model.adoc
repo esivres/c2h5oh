@@ -1,0 +1,79 @@
+= ADR-0008: Intent as data, behavior as handler
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+В POC команда сама себя исполняла (`CmdExecute`), совмещая данные и логику. Это затрудняет:
+
+1. Тестирование логики отдельно от команды
+2. Разделение ответственности
+3. Разную обработку ошибок для internal/external интентов
+
+Нужно разделить "что сделать" (intent) и "как сделать" (behavior).
+
+== Decision
+
+=== Intent — чистые данные
+
+Intent — это структура с данными, необходимыми для выполнения единицы работы. Каждый intent знает свой тип и происхождение:
+
+[source,go]
+----
+type Intent interface {
+    IntentType() Type
+    GetOrigin() Origin       // External | Internal
+    GetProcessInstanceKey() uint64
+}
+----
+
+Конкретные интенты — структуры с `Header` + type-specific поля:
+
+[source,go]
+----
+type ActivateElementIntent struct {
+    Header
+    ProcessDefinitionKey uint64
+    ElementId            string
+    ElementType          string
+    FlowScopeKey         uint64
+}
+----
+
+=== Origin определяет error handling
+
+[cols="1,1"]
+|===
+| Origin | При ошибке
+
+| External (от клиентской команды)
+| Retry с backoff, затем incident
+
+| Internal (порождён другим intent'ом)
+| Incident сразу
+|===
+
+=== Behavior — отдельный пакет
+
+Behavior (как обработать intent) определяется в отдельном пакете. Behavior получает intent + storage и возвращает новые intents:
+
+[source,go]
+----
+// storage.Handler pattern
+func(ctx context.Context, s Store) ([]intent.Intent, error)
+----
+
+=== Типы интентов
+
+Покрывают полный lifecycle: deploy, process instance (create/cancel/complete), element (activate/complete/terminate), sequence flow, job (create/activate/complete/fail/error/timeout), variables, timer (create/trigger/cancel), message (publish/subscribe/correlate/close), incident (create/resolve).
+
+== Consequences
+
+* **Positive:** Intent — чистые данные, легко сериализовать, логировать, тестировать.
+* **Positive:** Behavior тестируется с mock storage, без реальной БД.
+* **Positive:** Origin чётко определяет стратегию обработки ошибок.
+* **Positive:** Типы интентов покрывают весь lifecycle BPMN-движка.
+* **Negative:** Нужен registry для маппинга IntentType → Behavior. Дополнительная связка.

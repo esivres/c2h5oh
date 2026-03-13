@@ -1,0 +1,71 @@
+= Architecture Decision Records (ADR)
+
+Architectural decisions for the Rumunda project.
+
+|===
+| ADR | Title | Status
+
+| link:0000-adr-template.adoc[0000]
+| Template
+| —
+
+| link:0001-etree-for-xml-dom.adoc[0001]
+| etree as XML DOM library
+| Accepted
+
+| link:0002-single-package-bpmn-model.adoc[0002]
+| Single package for BPMN model types
+| Accepted
+
+| link:0003-marker-methods-for-type-discrimination.adoc[0003]
+| Marker methods for type discrimination
+| Accepted
+
+| link:0004-fluent-builder-with-shared-context.adoc[0004]
+| Fluent builder with shared context
+| Accepted
+
+| link:0005-shared-attribute-descriptors.adoc[0005]
+| Shared attribute descriptors via DOM
+| Accepted
+
+| link:0006-zeebe-extensions-via-generics.adoc[0006]
+| Zeebe extensions access via generic helpers
+| Accepted
+
+| link:0007-storage-abstraction.adoc[0007]
+| Storage abstraction with repository pattern
+| Accepted
+
+| link:0008-intent-model.adoc[0008]
+| Intent as data, behavior as handler
+| Accepted
+
+| link:0009-behavior-registry.adoc[0009]
+| Behavior registry with typed generic wrapper
+| Accepted
+
+| link:0010-event-notification-export.adoc[0010]
+| Event notification with collector pattern
+| Accepted
+
+| link:0011-stream-processor.adoc[0011]
+| Stream processor — partition processing loop
+| Accepted
+
+| link:0012-feel-expressions.adoc[0012]
+| FEEL expressions and IO mappings
+| Accepted
+
+| link:0013-no-dmn-forms-deployment.adoc[0013]
+| No DMN, Forms as deployable resources
+| Accepted
+
+| link:0014-grpc-gateway-api.adoc[0014]
+| gRPC Gateway API, Zeebe compat proxy, push-based streaming
+| Accepted
+
+| link:0015-two-phase-element-lifecycle.adoc[0015]
+| Two-phase element lifecycle (ElementActivated / ElementCompleted)
+| Accepted
+|===

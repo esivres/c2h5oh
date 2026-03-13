@@ -1,0 +1,84 @@
+= ADR-0014: gRPC Gateway API, Zeebe compatibility proxy, push-based streaming
+:revdate: 2026-03-06
+
+== Status
+
+Accepted
+
+== Context
+
+Движку нужен внешний API для взаимодействия с клиентами: деплой процессов, запуск инстансов, работа с jobs, сигналы, сообщения. Кроме того, нужна совместимость с существующими Zeebe-клиентами (Go SDK 8.5), чтобы упростить миграцию.
+
+Для job workers важна минимальная задержка: polling с интервалом неэффективен, а server-side streaming с push-нотификацией позволяет получать задачи мгновенно.
+
+Ad-hoc subprocess требует API для динамической активации элементов извне — стандартный Zeebe API этого не предоставляет.
+
+== Decision
+
+=== Собственный gRPC API (GatewayAPI)
+
+Протокол определён в `api/proto/gateway.proto`. RPC:
+
+* **DeployProcess** — деплой BPMN-определения с idempotent check по content hash
+* **CreateProcessInstance** — запуск инстанса по process id
+* **ActivateJobs** — long-poll получение jobs по типу
+* **StreamActivatedJobs** — server-side streaming с push-нотификацией
+* **CompleteJob** — завершение job с результатом
+* **BroadcastSignal** — рассылка BPMN-сигнала
+* **PublishMessage** — публикация сообщения для корреляции
+* **ActivateElement** — активация элемента внутри ad-hoc subprocess
+
+=== Push-нотификация через Observer + Notifier
+
+[source,go]
+----
+type IntentObserver func(i intent.Intent)
+----
+
+Processor вызывает observers после успешной обработки каждого intent. Два notifier'а:
+
+* **JobNotifier** — keyed by job type, уведомляет StreamActivatedJobs
+* **DeployNotifier** — keyed by process id, уведомляет DeployProcess (вместо polling)
+
+Notifier использует buffered(1) каналы для coalescing множественных событий.
+
+=== Zeebe Gateway Compatibility Proxy
+
+`ZeebeProxy` реализует `pb.GatewayServer` из `github.com/camunda/zeebe/clients/go/v8/pkg/pb`. Включается флагом `-zeebe-compat`, висит на том же gRPC-порту.
+
+Реализовано 14 из 21 RPC Zeebe Gateway 8.5:
+
+[cols="1,1"]
+|===
+| Реализовано | Не реализовано
+
+| Topology, DeployProcess, DeployResource, CreateProcessInstance, ActivateJobs, StreamActivatedJobs, CompleteJob, FailJob, ThrowError, PublishMessage, BroadcastSignal, CancelProcessInstance, ResolveIncident, SetVariables
+| CreateProcessInstanceWithResult, EvaluateDecision, UpdateJobRetries, UpdateJobTimeout, ModifyProcessInstance, MigrateProcessInstance, DeleteResource
+|===
+
+=== ActivateElement RPC для ad-hoc subprocess
+
+Новый RPC, отсутствующий в Zeebe API. Позволяет клиенту динамически активировать элементы внутри ad-hoc subprocess:
+
+* Валидация: scope_key должен указывать на `adHocSubProcess` element instance
+* Валидация: element_id должен существовать как flow element внутри этого ad-hoc
+* Опционально: передача variables на scope перед активацией
+* Разрешение elementType и jobType из BPMN-модели
+
+=== Ad-hoc subprocess: completionCondition и re-evaluation
+
+При завершении дочернего элемента внутри ad-hoc subprocess:
+
+1. Если есть `completionCondition` (FEEL) и она true → завершить subprocess
+2. `cancelRemainingInstances` (default true) → terminate активных детей перед завершением
+3. Если condition false и нет активных детей → re-evaluate `activeElementsCollection` → активировать новые элементы
+4. Если нет completionCondition → завершить когда все дети завершены
+
+== Consequences
+
+* **Positive:** Push-нотификация вместо polling — мгновенная доставка jobs и deploy-результатов.
+* **Positive:** Zeebe-совместимость позволяет использовать существующие Go-клиенты и инструменты без модификации.
+* **Positive:** ActivateElement RPC даёт полный контроль над ad-hoc subprocess из клиентского кода.
+* **Positive:** Observer pattern слабо связан с Processor — легко добавить новые notifier'ы.
+* **Negative:** Zeebe proxy дублирует логику маппинга между двумя proto-форматами (uint64 ↔ int64).
+* **Negative:** 7 RPC Zeebe API не реализованы — клиенты получат `Unimplemented` при вызове.
