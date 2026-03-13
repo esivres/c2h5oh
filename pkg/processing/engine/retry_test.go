@@ -92,7 +92,7 @@ func TestRetry_ExternalIntent_SucceedsOnRetry(t *testing.T) {
 				return nil, fmt.Errorf("transient error")
 			}
 			// Succeed on 3rd attempt
-			s.ProcessDefinitions().Create(context.Background(), &storage.ProcessDefinition{
+			_ = s.ProcessDefinitions().Create(context.Background(), &storage.ProcessDefinition{
 				Key:           i.Key,
 				BpmnProcessId: i.BpmnProcessId,
 				Version:       1,

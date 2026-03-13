@@ -3,7 +3,6 @@ package sql
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
 	"github.com/esivres/c2h5oh/pkg/processing/storage"
@@ -114,20 +113,4 @@ func (r *messageSubscriptionRepo) CleanExpired(ctx context.Context, now time.Tim
 		return 0, err
 	}
 	return res.RowsAffected()
-}
-
-// scanOne for message subscription
-func (r *messageSubscriptionRepo) scanOne(row *sql.Row) (*storage.MessageSubscription, error) {
-	sub := &storage.MessageSubscription{}
-	var createdAt int64
-	err := row.Scan(&sub.Key, &sub.ProcessInstanceKey, &sub.ElementInstanceKey,
-		&sub.MessageName, &sub.CorrelationKey, &sub.State, &createdAt)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	sub.CreatedAt = time.UnixMilli(createdAt)
-	return sub, nil
 }

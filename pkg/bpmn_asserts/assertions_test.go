@@ -44,9 +44,9 @@ func TestJobAssert_HasType_Fails(t *testing.T) {
 
 func TestJobAssert_HasDeadline(t *testing.T) {
 	stream := NewRecordStream()
-	rec := makeJobRecord("CREATED", 10, "myJob", "task1", 100, 3)
+	_ = makeJobRecord("CREATED", 10, "myJob", "task1", 100, 3)
 	// Set a specific deadline in the job value
-	rec = makeRecord("JOB", "EVENT", "CREATED", 10, JobValue{
+	rec := makeRecord("JOB", "EVENT", "CREATED", 10, JobValue{
 		Type:               "myJob",
 		ElementID:          "task1",
 		ProcessInstanceKey: 100,

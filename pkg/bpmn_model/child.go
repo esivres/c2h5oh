@@ -1,9 +1,5 @@
 package bpmn_model
 
-import (
-	xmlm "github.com/esivres/c2h5oh/pkg/bpmn_model/xml"
-)
-
 // ChildSpec describes a child element relationship on a ModelElementType.
 type ChildSpec struct {
 	ChildTypeName string
@@ -183,13 +179,4 @@ func (c *ChildElementCollectionUntyped) Add(parent ModelElementInstance, child M
 	if mi := parent.GetModelInstance(); mi != nil {
 		mi.RegisterElement(child)
 	}
-}
-
-// findChildDomElement is a helper to find a child DOM element by namespace and name.
-func findChildDomElement(parent *xmlm.Element, nsURI, localName string) *xmlm.Element {
-	children := parent.GetChildElementsByNS(nsURI, localName)
-	if len(children) > 0 {
-		return children[0]
-	}
-	return nil
 }

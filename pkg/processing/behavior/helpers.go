@@ -151,7 +151,6 @@ func parseISO8601Duration(s string) (time.Duration, error) {
 				return 0, err
 			}
 			total += time.Duration(secs) * time.Second
-			s = s[idx+1:]
 		}
 	}
 

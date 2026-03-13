@@ -1,0 +1,22 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - ineffassign
+    - staticcheck
+    - unused
+  exclusions:
+    rules:
+      # Zeebe proto has deprecated types that we must use for compatibility
+      - linters: [staticcheck]
+        text: "SA1019.*deprecated"
+        path: "pkg/gateway/zeebe_proxy\\.go"
+      # defer rows.Close() / db.Close() — standard Go pattern, error not actionable
+      - linters: [errcheck]
+        text: "`.+\\.Close`"
+      # go proc.Run(ctx) in tests — error checked via context cancellation
+      - linters: [errcheck]
+        text: "`proc\\.Run`"
+        path: "_test\\.go"

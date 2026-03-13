@@ -591,7 +591,7 @@ func (b *AdHocSubProcessBuilder) ZeebeJobType(jobType string) *AdHocSubProcessBu
 func (b *AdHocSubProcessBuilder) ZeebeInput(source, target string) *AdHocSubProcessBuilder {
 	ioMapping := getOrCreateExtElement[ZeebeIoMapping](b.ctx.bmi.ModelInstance, b.element, ZEEBE_NS, ZEEBE_ELEMENT_IO_MAPPING)
 	inputType := bpmnModel.GetTypeByQName(ZEEBE_NS, ZEEBE_ELEMENT_INPUT)
-	inst, _ := b.ctx.bmi.ModelInstance.NewInstance(inputType)
+	inst, _ := b.ctx.bmi.NewInstance(inputType)
 	input := inst.(ZeebeInput)
 	input.SetSource(source)
 	input.SetTarget(target)
@@ -602,7 +602,7 @@ func (b *AdHocSubProcessBuilder) ZeebeInput(source, target string) *AdHocSubProc
 func (b *AdHocSubProcessBuilder) ZeebeOutput(source, target string) *AdHocSubProcessBuilder {
 	ioMapping := getOrCreateExtElement[ZeebeIoMapping](b.ctx.bmi.ModelInstance, b.element, ZEEBE_NS, ZEEBE_ELEMENT_IO_MAPPING)
 	outputType := bpmnModel.GetTypeByQName(ZEEBE_NS, ZEEBE_ELEMENT_OUTPUT)
-	inst, _ := b.ctx.bmi.ModelInstance.NewInstance(outputType)
+	inst, _ := b.ctx.bmi.NewInstance(outputType)
 	output := inst.(ZeebeOutput)
 	output.SetSource(source)
 	output.SetTarget(target)

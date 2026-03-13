@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/esivres/c2h5oh/pkg/processing/behavior"
-	"github.com/esivres/c2h5oh/pkg/processing/export"
 	"github.com/esivres/c2h5oh/pkg/processing/intent"
 	"github.com/esivres/c2h5oh/pkg/processing/storage"
 
@@ -219,20 +218,6 @@ func (r *mockIncidentRepo) FindByProcessInstance(context.Context, uint64) ([]*st
 }
 func (r *mockIncidentRepo) FindUnresolved(context.Context, int) ([]*storage.Incident, error) {
 	return nil, nil
-}
-
-// --- Mock Exporter ---
-
-type mockExporter struct {
-	events []export.Event
-	mu     sync.Mutex
-}
-
-func (e *mockExporter) Export(_ context.Context, events []export.Event) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.events = append(e.events, events...)
-	return nil
 }
 
 // --- Tests ---

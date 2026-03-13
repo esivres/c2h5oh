@@ -26,7 +26,7 @@ func logRecords(rs *RecordStream, sb *strings.Builder) {
 	sb.WriteString("The following records have been recorded during this test:")
 	for _, r := range records {
 		sb.WriteString("\n")
-		sb.WriteString(fmt.Sprintf("| %-20s%-35s%-30s| ", r.RecordType, r.ValueType, r.Intent))
+		fmt.Fprintf(sb, "| %-20s%-35s%-30s| ", r.RecordType, r.ValueType, r.Intent)
 		sb.WriteString(logRecordDetails(r))
 	}
 	sb.WriteString("\n")
@@ -326,9 +326,9 @@ func logUnresolvedIncidents(rs *RecordStream, sb *strings.Builder) {
 		if json.Unmarshal(r.Value, &v) != nil {
 			continue
 		}
-		sb.WriteString(fmt.Sprintf("On element %s in process %s\n", v.ElementID, v.BpmnProcessID))
-		sb.WriteString(fmt.Sprintf("\t- Error type: %s\n", v.ErrorType))
-		sb.WriteString(fmt.Sprintf("\t- Error message: %s\n", v.ErrorMessage))
+		fmt.Fprintf(sb, "On element %s in process %s\n", v.ElementID, v.BpmnProcessID)
+		fmt.Fprintf(sb, "\t- Error type: %s\n", v.ErrorType)
+		fmt.Fprintf(sb, "\t- Error message: %s\n", v.ErrorMessage)
 	}
 	sb.WriteString("\nIf you did not expect any incidents to occur, then we recommend investigating ")
 	sb.WriteString("these. These incidents may indicate what went wrong in your test case\n")

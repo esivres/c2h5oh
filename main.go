@@ -63,7 +63,7 @@ func run(logger *slog.Logger, grpcAddr, dbPath string, zeebeCompat bool) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := sqlstore.Migrate(ctx, db); err != nil {
 		return fmt.Errorf("migrate: %w", err)

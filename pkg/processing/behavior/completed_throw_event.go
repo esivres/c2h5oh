@@ -53,12 +53,10 @@ func completedThrowEvent(ctx context.Context, s storage.Store, i *intent.Element
 	if err != nil {
 		return nil, err
 	}
-	if escIntents != nil {
-		// Filter out incidents for intermediate throw — escalation is optional
-		for _, in := range escIntents {
-			if _, isIncident := in.(*intent.CreateIncidentIntent); !isIncident {
-				intents = append(intents, in)
-			}
+	// Filter out incidents for intermediate throw — escalation is optional
+	for _, in := range escIntents {
+		if _, isIncident := in.(*intent.CreateIncidentIntent); !isIncident {
+			intents = append(intents, in)
 		}
 	}
 
