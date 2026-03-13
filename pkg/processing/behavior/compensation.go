@@ -9,8 +9,6 @@ import (
 // handleCompensationThrow handles compensation throw (intermediate throw or end event).
 // Finds boundary compensation events in the scope and activates their linked handlers.
 func handleCompensationThrow(bmi *bpmn_model.BpmnModelInstance, ei *storage.ElementInstance, piKey uint64) []intent.Intent {
-	bpmnNS := "http://www.omg.org/spec/BPMN/20100524/MODEL"
-
 	// Verify this element has a compensateEventDefinition
 	flowNodes := bpmn_model.GetTypedElements[bpmn_model.FlowNode](bmi.ModelInstance)
 	hasCompensation := false

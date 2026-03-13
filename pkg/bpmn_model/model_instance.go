@@ -125,7 +125,7 @@ func (mi *ModelInstance) ResolveElements() error {
 	return mi.resolveElement(root, nil)
 }
 
-func (mi *ModelInstance) resolveElement(domElem *xmlm.Element, parent ModelElementInstance) error {
+func (mi *ModelInstance) resolveElement(domElem *xmlm.Element, _ ModelElementInstance) error {
 	nsURI := domElem.NamespaceURI()
 	localName := domElem.LocalName()
 
@@ -133,7 +133,7 @@ func (mi *ModelInstance) resolveElement(domElem *xmlm.Element, parent ModelEleme
 	if elemType == nil {
 		// Unknown type — skip but still process children for known types
 		for _, child := range domElem.GetChildElements() {
-			if err := mi.resolveElement(child, parent); err != nil {
+			if err := mi.resolveElement(child, nil); err != nil {
 				return err
 			}
 		}

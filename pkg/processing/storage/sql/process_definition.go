@@ -82,7 +82,7 @@ func (r *processDefinitionRepo) Delete(ctx context.Context, key uint64) error {
 	return err
 }
 
-func (r *processDefinitionRepo) scanOne(row *sql.Row) (*storage.ProcessDefinition, error) {
+func (*processDefinitionRepo) scanOne(row *sql.Row) (*storage.ProcessDefinition, error) {
 	def := &storage.ProcessDefinition{}
 	var deployedAt int64
 	err := row.Scan(&def.Key, &def.BpmnProcessId, &def.Name, &def.Version, &def.ContentHash, &def.Content, &deployedAt)
@@ -100,7 +100,7 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-func (r *processDefinitionRepo) scanRow(row rowScanner) (*storage.ProcessDefinition, error) {
+func (*processDefinitionRepo) scanRow(row rowScanner) (*storage.ProcessDefinition, error) {
 	def := &storage.ProcessDefinition{}
 	var deployedAt int64
 	err := row.Scan(&def.Key, &def.BpmnProcessId, &def.Name, &def.Version, &def.ContentHash, &def.Content, &deployedAt)

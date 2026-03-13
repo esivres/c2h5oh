@@ -163,7 +163,7 @@ func resolveElementTypeFromNode(node bpmn_model.FlowNode) string {
 }
 
 // resolveJobTypeFromNode extracts the job type from a ZeebeTaskDefinition extension element.
-func resolveJobTypeFromNode(bmi *bpmn_model.BpmnModelInstance, node bpmn_model.FlowNode) string {
+func resolveJobTypeFromNode(_ *bpmn_model.BpmnModelInstance, node bpmn_model.FlowNode) string {
 	if be, ok := node.(bpmn_model.BaseElement); ok {
 		td, found := bpmn_model.GetSingleExtensionElement[bpmn_model.ZeebeTaskDefinition](be)
 		if found {

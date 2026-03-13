@@ -141,9 +141,9 @@ func logMessageRecord(r Record) string {
 
 func logMessageSubscriptionRecord(r Record) string {
 	var v struct {
+		Variables      map[string]any `json:"variables"`
 		MessageName    string         `json:"messageName"`
 		CorrelationKey string         `json:"correlationKey"`
-		Variables      map[string]any `json:"variables"`
 	}
 	if json.Unmarshal(r.Value, &v) != nil {
 		return ""
@@ -272,8 +272,8 @@ func logUserTaskRecord(r Record) string {
 
 func logSignalRecord(r Record) string {
 	var v struct {
-		SignalName string         `json:"signalName"`
 		Variables  map[string]any `json:"variables"`
+		SignalName string         `json:"signalName"`
 	}
 	if json.Unmarshal(r.Value, &v) != nil {
 		return ""

@@ -19,44 +19,19 @@ const (
 
 // Job is a mutable entity representing work to be done by an external worker.
 type Job struct {
-	// Key is the unique identifier.
-	Key uint64
-
-	// ProcessInstanceKey links to the owning process instance.
-	ProcessInstanceKey uint64
-
-	// ElementInstanceKey links to the element instance that created this job.
-	ElementInstanceKey uint64
-
-	// ProcessDefinitionKey links to the process definition.
+	CreatedAt            time.Time
+	Deadline             time.Time
+	Worker               string
+	ErrorCode            string
+	Type                 string
+	ErrorMessage         string
+	Variables            []byte
 	ProcessDefinitionKey uint64
-
-	// Type is the job type used for worker activation (e.g. "payment-service").
-	Type string
-
-	// State is the current lifecycle state.
-	State JobState
-
-	// Retries is the remaining retry count.
-	Retries int
-
-	// Worker is the name of the worker that activated this job (empty if not activated).
-	Worker string
-
-	// Deadline is the time by which the job must be completed once activated.
-	Deadline time.Time
-
-	// ErrorMessage is set when the job fails.
-	ErrorMessage string
-
-	// ErrorCode is set when the job throws a BPMN error.
-	ErrorCode string
-
-	// Variables is the serialized job variables (JSON bytes).
-	Variables []byte
-
-	// CreatedAt is the creation timestamp.
-	CreatedAt time.Time
+	Retries              int
+	State                JobState
+	Key                  uint64
+	ElementInstanceKey   uint64
+	ProcessInstanceKey   uint64
 }
 
 // JobRepository manages job storage.

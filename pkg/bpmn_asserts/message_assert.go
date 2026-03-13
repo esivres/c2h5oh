@@ -10,9 +10,9 @@ import (
 // MessageAssert provides fluent assertions on a published Zeebe message.
 type MessageAssert struct {
 	t          testing.TB
-	messageKey int64
-	stream     *RecordStream
 	ctx        context.Context
+	stream     *RecordStream
+	messageKey int64
 }
 
 // ForMessage creates a new MessageAssert for the given message key.

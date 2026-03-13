@@ -50,28 +50,26 @@ func throwJobError(ctx context.Context, s storage.Store, i *intent.ThrowJobError
 
 		boundaryId := findBoundaryErrorEvent(bmi, ei.ElementId, i.ErrorCode)
 		if boundaryId != "" {
-			var intents []intent.Intent
-
-			// Terminate the current element (cancel activity)
-			intents = append(intents, &intent.TerminateElementIntent{
-				Header: intent.Header{
-					Origin:             intent.Internal,
-					ProcessInstanceKey: i.ProcessInstanceKey,
+			// Terminate the current element (cancel activity) + activate the boundary error event
+			intents := []intent.Intent{
+				&intent.TerminateElementIntent{
+					Header: intent.Header{
+						Origin:             intent.Internal,
+						ProcessInstanceKey: i.ProcessInstanceKey,
+					},
+					ElementInstanceKey: job.ElementInstanceKey,
 				},
-				ElementInstanceKey: job.ElementInstanceKey,
-			})
-
-			// Activate the boundary error event
-			intents = append(intents, &intent.ActivateElementIntent{
-				Header: intent.Header{
-					Origin:             intent.Internal,
-					ProcessInstanceKey: i.ProcessInstanceKey,
+				&intent.ActivateElementIntent{
+					Header: intent.Header{
+						Origin:             intent.Internal,
+						ProcessInstanceKey: i.ProcessInstanceKey,
+					},
+					ProcessDefinitionKey: job.ProcessDefinitionKey,
+					ElementId:            boundaryId,
+					ElementType:          elementTypeBoundaryEvent,
+					FlowScopeKey:         ei.FlowScopeKey,
 				},
-				ProcessDefinitionKey: job.ProcessDefinitionKey,
-				ElementId:            boundaryId,
-				ElementType:          "boundaryEvent",
-				FlowScopeKey:         ei.FlowScopeKey,
-			})
+			}
 
 			return intents, nil
 		}

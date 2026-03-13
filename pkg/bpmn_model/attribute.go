@@ -7,12 +7,12 @@ import (
 
 // AttributeDescriptor describes an XML attribute on a ModelElementType.
 type AttributeDescriptor struct {
+	OwnerType    *ModelElementType
 	Name         string
-	Namespace    string // empty for non-namespaced attributes
+	Namespace    string
 	DefaultValue string
 	Required     bool
 	IsId         bool
-	OwnerType    *ModelElementType
 }
 
 // ValueConverter converts between string representations and typed values.

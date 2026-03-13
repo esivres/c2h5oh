@@ -7,23 +7,12 @@ import (
 
 // FormDefinition represents a deployed form resource (JSON).
 type FormDefinition struct {
-	// Key is the unique identifier.
-	Key uint64
-
-	// FormId is the form identifier (used for lookup).
-	FormId string
-
-	// Version is the deployment version.
-	Version uint64
-
-	// Content is the raw form JSON.
-	Content []byte
-
-	// ContentHash is the hash for deduplication.
+	DeployedAt  time.Time
+	FormId      string
+	Content     []byte
 	ContentHash []byte
-
-	// DeployedAt is the deployment timestamp.
-	DeployedAt time.Time
+	Key         uint64
+	Version     uint64
 }
 
 // FormRepository manages form definition storage.

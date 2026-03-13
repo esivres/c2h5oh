@@ -25,7 +25,7 @@ func (mb *ModelBuilder) AlternativeNamespace(alternative, actual string) *ModelB
 
 // DefineType starts defining a new element type.
 // goType should be a pointer to the interface or struct type, e.g. (*MyInterface)(nil).
-func (mb *ModelBuilder) DefineType(goType interface{}, xmlName string) *TypeBuilder {
+func (mb *ModelBuilder) DefineType(goType any, xmlName string) *TypeBuilder {
 	tb := &TypeBuilder{
 		modelBuilder: mb,
 		typeName:     xmlName,
@@ -91,14 +91,14 @@ func (mb *ModelBuilder) GetModel() *Model {
 
 // TypeBuilder provides a fluent API for defining a single element type.
 type TypeBuilder struct {
-	modelBuilder  *ModelBuilder
-	typeName      string
-	typeNamespace string
 	goType        reflect.Type
 	baseGoType    reflect.Type
+	modelBuilder  *ModelBuilder
 	attributes    map[string]*AttributeDescriptor
-	childSpecs    []*ChildSpec
 	provider      InstanceProvider
+	typeName      string
+	typeNamespace string
+	childSpecs    []*ChildSpec
 	isAbstract    bool
 }
 
@@ -110,7 +110,7 @@ func (tb *TypeBuilder) Namespace(ns string) *TypeBuilder {
 
 // ExtendsType sets the base type.
 // baseType should be a pointer to the interface type, e.g. (*BaseInterface)(nil).
-func (tb *TypeBuilder) ExtendsType(baseType interface{}) *TypeBuilder {
+func (tb *TypeBuilder) ExtendsType(baseType any) *TypeBuilder {
 	tb.baseGoType = reflect.TypeOf(baseType)
 	return tb
 }

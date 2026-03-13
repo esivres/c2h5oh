@@ -58,7 +58,7 @@ func (r *messageSubscriptionRepo) FindByProcessInstance(ctx context.Context, piK
 	return r.scanRows(rows)
 }
 
-func (r *messageSubscriptionRepo) scanRows(rows *sql.Rows) ([]*storage.MessageSubscription, error) {
+func (*messageSubscriptionRepo) scanRows(rows *sql.Rows) ([]*storage.MessageSubscription, error) {
 	var result []*storage.MessageSubscription
 	for rows.Next() {
 		sub := &storage.MessageSubscription{}

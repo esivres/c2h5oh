@@ -1,7 +1,6 @@
 package bpmn_model
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -389,8 +388,8 @@ func TestRoundTrip_CreateProcessAndReparse(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify XML contains expected content
-	assert.True(t, strings.Contains(xmlStr, "Test Process"))
-	assert.True(t, strings.Contains(xmlStr, "Begin"))
+	assert.Contains(t, xmlStr, "Test Process")
+	assert.Contains(t, xmlStr, "Begin")
 
 	// Re-parse
 	bmi2, err := ReadFromString(xmlStr)

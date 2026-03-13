@@ -10,6 +10,6 @@ import (
 // activatedAutoComplete is the default fallback for ElementActivatedIntent.
 // It simply emits a CompleteElementIntent (auto-complete).
 // Used for: startEvent, endEvent, manualTask, eventBasedGateway, and unknown types.
-func activatedAutoComplete(ctx context.Context, s storage.Store, i *intent.ElementActivatedIntent) ([]intent.Intent, error) {
+func activatedAutoComplete(_ context.Context, _ storage.Store, i *intent.ElementActivatedIntent) ([]intent.Intent, error) {
 	return autoCompleteFromActivated(i), nil
 }

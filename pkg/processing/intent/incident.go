@@ -2,19 +2,11 @@ package intent
 
 // CreateIncidentIntent requests creation of an incident.
 type CreateIncidentIntent struct {
-	Header
-
-	// ElementInstanceKey is the affected element instance.
-	ElementInstanceKey uint64
-
-	// JobKey is the affected job (0 if not job-related).
-	JobKey uint64
-
-	// ErrorType categorizes the incident (maps to storage.IncidentType).
-	ErrorType string
-
-	// ErrorMessage describes what went wrong.
+	ErrorType    string
 	ErrorMessage string
+	Header
+	ElementInstanceKey uint64
+	JobKey             uint64
 }
 
 func (i *CreateIncidentIntent) IntentType() Type { return CreateIncident }

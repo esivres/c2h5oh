@@ -61,3 +61,6 @@ const (
 	IntentErrorThrown          ZeebeIntent = "ERROR_THROWN"
 	IntentRecurredAfterBackoff ZeebeIntent = "RECURRED_AFTER_BACKOFF"
 )
+
+// BpmnElementType constants for element type discrimination in record values.
+const BpmnElementTypeProcess = "PROCESS"

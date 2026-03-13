@@ -8,12 +8,8 @@ import (
 
 // RetryPolicy configures retry behavior for external intent failures.
 type RetryPolicy struct {
-	// MaxRetries is the maximum number of retry attempts (default: 3).
+	Intervals  []time.Duration
 	MaxRetries int
-
-	// Intervals defines backoff durations for each retry attempt.
-	// If there are more retries than intervals, the last interval is reused.
-	Intervals []time.Duration
 }
 
 // DefaultRetryPolicy returns a policy with 3 retries and exponential backoff.

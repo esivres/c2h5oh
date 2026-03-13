@@ -407,7 +407,7 @@ func TestAbstractType_CannotInstantiate(t *testing.T) {
 
 	animalType := model.GetTypeByQName(testNS, "animal")
 	_, err := mi.NewInstance(animalType)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "abstract")
 }
 

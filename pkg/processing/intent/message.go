@@ -4,18 +4,10 @@ import "time"
 
 // PublishMessageIntent requests publishing a message for correlation.
 type PublishMessageIntent struct {
-	Header
-
-	// MessageName is the BPMN message name.
-	MessageName string
-
-	// CorrelationKey is the business key for correlation.
+	MessageName    string
 	CorrelationKey string
-
-	// Variables is the message payload (JSON bytes).
-	Variables []byte
-
-	// TTL is how long the message lives if no subscription matches.
+	Variables      []byte
+	Header
 	TTL time.Duration
 }
 
@@ -23,32 +15,20 @@ func (i *PublishMessageIntent) IntentType() Type { return PublishMessage }
 
 // OpenSubscriptionIntent requests opening a message subscription.
 type OpenSubscriptionIntent struct {
-	Header
-
-	// ElementInstanceKey is the element instance waiting for this message.
-	ElementInstanceKey uint64
-
-	// MessageName is the BPMN message name.
-	MessageName string
-
-	// CorrelationKey is the business key for correlation.
+	MessageName    string
 	CorrelationKey string
+	Header
+	ElementInstanceKey uint64
 }
 
 func (i *OpenSubscriptionIntent) IntentType() Type { return OpenSubscription }
 
 // CorrelateMessageIntent signals that a message matched a subscription.
 type CorrelateMessageIntent struct {
-	Header
-
-	// SubscriptionKey is the key of the matched subscription.
-	SubscriptionKey uint64
-
-	// MessageBufferKey is the key of the buffered message (0 if direct correlation).
-	MessageBufferKey uint64
-
-	// Variables is the message payload to merge into scope (JSON bytes).
 	Variables []byte
+	Header
+	SubscriptionKey  uint64
+	MessageBufferKey uint64
 }
 
 func (i *CorrelateMessageIntent) IntentType() Type { return CorrelateMessage }

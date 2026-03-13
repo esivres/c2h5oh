@@ -24,7 +24,7 @@ func DefaultRegistry() *Registry {
 	r.RegisterWithElementType(intent.ElementCompleted, "exclusiveGateway", Typed(completedExclusiveGateway))
 	r.RegisterWithElementType(intent.ElementCompleted, "inclusiveGateway", Typed(completedInclusiveGateway))
 	r.RegisterWithElementType(intent.ElementCompleted, "endEvent", Typed(completedEndEvent))
-	r.RegisterWithElementType(intent.ElementCompleted, "boundaryEvent", Typed(completedBoundaryEvent))
+	r.RegisterWithElementType(intent.ElementCompleted, elementTypeBoundaryEvent, Typed(completedBoundaryEvent))
 	r.RegisterWithElementType(intent.ElementCompleted, "intermediateCatchEvent", Typed(completedCatchEvent))
 	r.RegisterWithElementType(intent.ElementCompleted, "intermediateThrowEvent", Typed(completedThrowEvent))
 
@@ -37,7 +37,7 @@ func DefaultRegistry() *Registry {
 	r.RegisterWithElementType(intent.ElementActivated, "sendTask", Typed(activatedJobTask))
 	r.RegisterWithElementType(intent.ElementActivated, "receiveTask", Typed(activatedReceiveTask))
 	r.RegisterWithElementType(intent.ElementActivated, "intermediateCatchEvent", Typed(activatedCatchEvent))
-	r.RegisterWithElementType(intent.ElementActivated, "boundaryEvent", Typed(activatedCatchEvent))
+	r.RegisterWithElementType(intent.ElementActivated, elementTypeBoundaryEvent, Typed(activatedCatchEvent))
 	r.RegisterWithElementType(intent.ElementActivated, "intermediateThrowEvent", Typed(activatedThrowEvent))
 	r.RegisterWithElementType(intent.ElementActivated, "parallelGateway", Typed(activatedParallelGateway))
 	r.RegisterWithElementType(intent.ElementActivated, "inclusiveGateway", Typed(activatedParallelGateway))

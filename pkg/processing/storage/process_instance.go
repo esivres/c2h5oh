@@ -17,26 +17,13 @@ const (
 
 // ProcessInstance is a mutable entity representing a running process.
 type ProcessInstance struct {
-	// Key is the unique identifier.
-	Key uint64
-
-	// ProcessDefinitionKey links to the deployed process definition.
+	CreatedAt            time.Time
+	BpmnProcessId        string
+	Key                  uint64
 	ProcessDefinitionKey uint64
-
-	// BpmnProcessId is the BPMN process id (denormalized for queries).
-	BpmnProcessId string
-
-	// ParentKey is the parent process instance key (0 if top-level).
-	ParentKey uint64
-
-	// ParentElementKey is the element instance key in the parent that spawned this instance.
-	ParentElementKey uint64
-
-	// State is the current lifecycle state.
-	State ProcessInstanceState
-
-	// CreatedAt is the creation timestamp.
-	CreatedAt time.Time
+	ParentKey            uint64
+	ParentElementKey     uint64
+	State                ProcessInstanceState
 }
 
 // ElementInstanceState represents the lifecycle of an element instance (token).
@@ -53,29 +40,14 @@ const (
 
 // ElementInstance is a mutable entity representing a token on a BPMN element.
 type ElementInstance struct {
-	// Key is the unique identifier.
-	Key uint64
-
-	// ProcessInstanceKey links to the owning process instance.
-	ProcessInstanceKey uint64
-
-	// ProcessDefinitionKey links to the process definition.
+	CreatedAt            time.Time
+	ElementId            string
+	ElementType          string
+	Key                  uint64
+	ProcessInstanceKey   uint64
 	ProcessDefinitionKey uint64
-
-	// ElementId is the BPMN element id (e.g. "Activity_01ran10").
-	ElementId string
-
-	// ElementType is the BPMN element type (e.g. "serviceTask", "exclusiveGateway").
-	ElementType string
-
-	// FlowScopeKey is the key of the parent scope element instance (process or subprocess).
-	FlowScopeKey uint64
-
-	// State is the current lifecycle state.
-	State ElementInstanceState
-
-	// CreatedAt is the creation timestamp.
-	CreatedAt time.Time
+	FlowScopeKey         uint64
+	State                ElementInstanceState
 }
 
 // ProcessInstanceRepository manages process instance and element instance storage.

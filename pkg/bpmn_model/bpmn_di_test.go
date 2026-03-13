@@ -82,10 +82,10 @@ func TestDI_ParseShapes(t *testing.T) {
 
 	bounds := startShape.GetBounds()
 	require.NotNil(t, bounds)
-	assert.Equal(t, 179.0, bounds.GetX())
-	assert.Equal(t, 79.0, bounds.GetY())
-	assert.Equal(t, 36.0, bounds.GetWidth())
-	assert.Equal(t, 36.0, bounds.GetHeight())
+	assert.InDelta(t, 179.0, bounds.GetX(), 0.01)
+	assert.InDelta(t, 79.0, bounds.GetY(), 0.01)
+	assert.InDelta(t, 36.0, bounds.GetWidth(), 0.01)
+	assert.InDelta(t, 36.0, bounds.GetHeight(), 0.01)
 }
 
 func TestDI_ParseEdges(t *testing.T) {
@@ -106,10 +106,10 @@ func TestDI_ParseEdges(t *testing.T) {
 
 	waypoints := flow1Edge.GetWaypoints()
 	require.Len(t, waypoints, 2)
-	assert.Equal(t, 215.0, waypoints[0].GetX())
-	assert.Equal(t, 97.0, waypoints[0].GetY())
-	assert.Equal(t, 265.0, waypoints[1].GetX())
-	assert.Equal(t, 97.0, waypoints[1].GetY())
+	assert.InDelta(t, 215.0, waypoints[0].GetX(), 0.01)
+	assert.InDelta(t, 97.0, waypoints[0].GetY(), 0.01)
+	assert.InDelta(t, 265.0, waypoints[1].GetX(), 0.01)
+	assert.InDelta(t, 97.0, waypoints[1].GetY(), 0.01)
 }
 
 // --- Builder DI generation tests ---
@@ -154,20 +154,20 @@ func TestDI_BuilderShapeBounds(t *testing.T) {
 	// Start event: 36x36
 	startBounds := shapeMap["start"].GetBounds()
 	require.NotNil(t, startBounds)
-	assert.Equal(t, 36.0, startBounds.GetWidth())
-	assert.Equal(t, 36.0, startBounds.GetHeight())
+	assert.InDelta(t, 36.0, startBounds.GetWidth(), 0.01)
+	assert.InDelta(t, 36.0, startBounds.GetHeight(), 0.01)
 
 	// Service task: 100x80
 	taskBounds := shapeMap["task"].GetBounds()
 	require.NotNil(t, taskBounds)
-	assert.Equal(t, 100.0, taskBounds.GetWidth())
-	assert.Equal(t, 80.0, taskBounds.GetHeight())
+	assert.InDelta(t, 100.0, taskBounds.GetWidth(), 0.01)
+	assert.InDelta(t, 80.0, taskBounds.GetHeight(), 0.01)
 
 	// End event: 36x36
 	endBounds := shapeMap["end"].GetBounds()
 	require.NotNil(t, endBounds)
-	assert.Equal(t, 36.0, endBounds.GetWidth())
-	assert.Equal(t, 36.0, endBounds.GetHeight())
+	assert.InDelta(t, 36.0, endBounds.GetWidth(), 0.01)
+	assert.InDelta(t, 36.0, endBounds.GetHeight(), 0.01)
 }
 
 func TestDI_BuilderEdgeWaypoints(t *testing.T) {
@@ -182,7 +182,7 @@ func TestDI_BuilderEdgeWaypoints(t *testing.T) {
 	waypoints := edges[0].GetWaypoints()
 	require.Len(t, waypoints, 2)
 	// Start: right center, End: left center
-	assert.True(t, waypoints[0].GetX() < waypoints[1].GetX())
+	assert.Less(t, waypoints[0].GetX(), waypoints[1].GetX())
 }
 
 func TestDI_XMLOutput(t *testing.T) {
@@ -240,10 +240,10 @@ func TestDI_RoundTrip(t *testing.T) {
 	require.NotNil(t, taskShape)
 	bounds := taskShape.GetBounds()
 	require.NotNil(t, bounds)
-	assert.Equal(t, 265.0, bounds.GetX())
-	assert.Equal(t, 57.0, bounds.GetY())
-	assert.Equal(t, 100.0, bounds.GetWidth())
-	assert.Equal(t, 80.0, bounds.GetHeight())
+	assert.InDelta(t, 265.0, bounds.GetX(), 0.01)
+	assert.InDelta(t, 57.0, bounds.GetY(), 0.01)
+	assert.InDelta(t, 100.0, bounds.GetWidth(), 0.01)
+	assert.InDelta(t, 80.0, bounds.GetHeight(), 0.01)
 }
 
 func TestDI_GatewaySize(t *testing.T) {
@@ -261,8 +261,8 @@ func TestDI_GatewaySize(t *testing.T) {
 
 	gwBounds := shapeMap["gw"].GetBounds()
 	require.NotNil(t, gwBounds)
-	assert.Equal(t, 50.0, gwBounds.GetWidth())
-	assert.Equal(t, 50.0, gwBounds.GetHeight())
+	assert.InDelta(t, 50.0, gwBounds.GetWidth(), 0.01)
+	assert.InDelta(t, 50.0, gwBounds.GetHeight(), 0.01)
 }
 
 func TestDI_EmptyProcessDone(t *testing.T) {

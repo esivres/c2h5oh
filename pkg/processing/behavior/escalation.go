@@ -11,8 +11,11 @@ import (
 
 // handleEscalationThrow handles escalation throw events (intermediate throw or end event).
 // Finds a matching boundary escalation event on the parent scope or creates an incident.
-func handleEscalationThrow(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, ei *storage.ElementInstance, piKey uint64) ([]intent.Intent, error) {
-	bpmnNS := "http://www.omg.org/spec/BPMN/20100524/MODEL"
+func handleEscalationThrow(
+	ctx context.Context, s storage.Store,
+	bmi *bpmn_model.BpmnModelInstance,
+	ei *storage.ElementInstance, piKey uint64,
+) ([]intent.Intent, error) {
 	escalationCode := ""
 
 	// Find the element in BPMN and extract escalation code
@@ -63,7 +66,7 @@ func handleEscalationThrow(ctx context.Context, s storage.Store, bmi *bpmn_model
 						},
 						ProcessDefinitionKey: ei.ProcessDefinitionKey,
 						ElementId:            boundaryId,
-						ElementType:          "boundaryEvent",
+						ElementType:          elementTypeBoundaryEvent,
 						FlowScopeKey:         scopeEI.FlowScopeKey,
 					},
 				}, nil
@@ -87,7 +90,6 @@ func handleEscalationThrow(ctx context.Context, s storage.Store, bmi *bpmn_model
 
 // findBoundaryEscalationEvent looks for a boundary escalation event attached to the given element.
 func findBoundaryEscalationEvent(bmi *bpmn_model.BpmnModelInstance, elementId string, escalationCode string) string {
-	bpmnNS := "http://www.omg.org/spec/BPMN/20100524/MODEL"
 	boundaryEvents := bpmn_model.GetTypedElements[bpmn_model.BoundaryEvent](bmi.ModelInstance)
 
 	var catchAll string

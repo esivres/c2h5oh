@@ -18,8 +18,6 @@ type errorEventSubProcessMatch struct {
 // findErrorEventSubProcess searches for an event subprocess with an error start event
 // inside the given parent subprocess element.
 func findErrorEventSubProcess(bmi *bpmn_model.BpmnModelInstance, parentElementId string, errorCode string) *errorEventSubProcessMatch {
-	bpmnNS := "http://www.omg.org/spec/BPMN/20100524/MODEL"
-
 	subProcesses := bpmn_model.GetTypedElements[bpmn_model.SubProcess](bmi.ModelInstance)
 	for _, sp := range subProcesses {
 		if sp.GetId() != parentElementId {
@@ -33,7 +31,7 @@ func findErrorEventSubProcess(bmi *bpmn_model.BpmnModelInstance, parentElementId
 				continue
 			}
 
-			if match := matchErrorStartEvent(bmi, esp, bpmnNS, errorCode); match != nil {
+			if match := matchErrorStartEvent(bmi, esp, errorCode); match != nil {
 				return match
 			}
 		}
@@ -45,8 +43,6 @@ func findErrorEventSubProcess(bmi *bpmn_model.BpmnModelInstance, parentElementId
 // findErrorEventSubProcessAtProcessLevel searches for an event subprocess with an error start event
 // at the process level (not inside another subprocess).
 func findErrorEventSubProcessAtProcessLevel(bmi *bpmn_model.BpmnModelInstance, errorCode string) *errorEventSubProcessMatch {
-	bpmnNS := "http://www.omg.org/spec/BPMN/20100524/MODEL"
-
 	processes := bpmn_model.GetTypedElements[bpmn_model.Process](bmi.ModelInstance)
 	for _, p := range processes {
 		for _, fe := range p.GetFlowElements() {
@@ -55,7 +51,7 @@ func findErrorEventSubProcessAtProcessLevel(bmi *bpmn_model.BpmnModelInstance, e
 				continue
 			}
 
-			if match := matchErrorStartEvent(bmi, esp, bpmnNS, errorCode); match != nil {
+			if match := matchErrorStartEvent(bmi, esp, errorCode); match != nil {
 				return match
 			}
 		}
@@ -64,7 +60,10 @@ func findErrorEventSubProcessAtProcessLevel(bmi *bpmn_model.BpmnModelInstance, e
 }
 
 // matchErrorStartEvent checks if the event subprocess has an error start event matching the error code.
-func matchErrorStartEvent(bmi *bpmn_model.BpmnModelInstance, esp bpmn_model.SubProcess, bpmnNS string, errorCode string) *errorEventSubProcessMatch {
+func matchErrorStartEvent(
+	bmi *bpmn_model.BpmnModelInstance, esp bpmn_model.SubProcess,
+	errorCode string,
+) *errorEventSubProcessMatch {
 	for _, inner := range esp.GetFlowElements() {
 		se, ok := inner.(bpmn_model.StartEvent)
 		if !ok {
@@ -107,7 +106,11 @@ func matchErrorStartEvent(bmi *bpmn_model.BpmnModelInstance, esp bpmn_model.SubP
 }
 
 // activateErrorEventSubProcess activates an error event subprocess found inside a parent subprocess scope.
-func activateErrorEventSubProcess(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, match *errorEventSubProcessMatch, scopeKey, piKey uint64, errorEI *storage.ElementInstance, scopeEI *storage.ElementInstance) ([]intent.Intent, error) {
+func activateErrorEventSubProcess(
+	ctx context.Context, s storage.Store, _ *bpmn_model.BpmnModelInstance,
+	match *errorEventSubProcessMatch, scopeKey, piKey uint64,
+	errorEI *storage.ElementInstance, _ *storage.ElementInstance,
+) ([]intent.Intent, error) {
 	var intents []intent.Intent
 
 	if match.Interrupting {
@@ -135,7 +138,11 @@ func activateErrorEventSubProcess(ctx context.Context, s storage.Store, bmi *bpm
 }
 
 // activateErrorEventSubProcessAtProcess activates an error event subprocess at process level.
-func activateErrorEventSubProcessAtProcess(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, match *errorEventSubProcessMatch, piKey uint64, errorEI *storage.ElementInstance) ([]intent.Intent, error) {
+func activateErrorEventSubProcessAtProcess(
+	ctx context.Context, s storage.Store, _ *bpmn_model.BpmnModelInstance,
+	match *errorEventSubProcessMatch, piKey uint64,
+	errorEI *storage.ElementInstance,
+) ([]intent.Intent, error) {
 	var intents []intent.Intent
 
 	if match.Interrupting {

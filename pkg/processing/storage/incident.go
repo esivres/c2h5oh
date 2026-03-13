@@ -26,32 +26,15 @@ const (
 
 // Incident is a mutable entity representing a problem that requires attention.
 type Incident struct {
-	// Key is the unique identifier.
-	Key uint64
-
-	// ProcessInstanceKey links to the affected process instance.
+	CreatedAt          time.Time
+	ResolvedAt         time.Time
+	Type               IncidentType
+	ErrorMessage       string
+	Key                uint64
 	ProcessInstanceKey uint64
-
-	// ElementInstanceKey links to the affected element instance.
 	ElementInstanceKey uint64
-
-	// JobKey links to the affected job (0 if not job-related).
-	JobKey uint64
-
-	// Type categorizes the incident.
-	Type IncidentType
-
-	// State is the current lifecycle state.
-	State IncidentState
-
-	// ErrorMessage describes what went wrong.
-	ErrorMessage string
-
-	// CreatedAt is the creation timestamp.
-	CreatedAt time.Time
-
-	// ResolvedAt is when the incident was resolved (zero if not resolved).
-	ResolvedAt time.Time
+	JobKey             uint64
+	State              IncidentState
 }
 
 // IncidentRepository manages incident storage.

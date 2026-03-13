@@ -10,11 +10,6 @@ import (
 // Record represents a single exported event from Zeebe's DebugLogExporter.
 // Field names match the JSON output (camelCase via Jackson serialization).
 type Record struct {
-	PartitionID          int             `json:"partitionId"`
-	Position             int64           `json:"position"`
-	SourceRecordPosition int64           `json:"sourceRecordPosition"`
-	Key                  int64           `json:"key"`
-	Timestamp            int64           `json:"timestamp"`
 	RecordType           ZeebeRecordType `json:"recordType"`
 	ValueType            ZeebeValueType  `json:"valueType"`
 	Intent               ZeebeIntent     `json:"intent"`
@@ -22,32 +17,37 @@ type Record struct {
 	RejectionReason      string          `json:"rejectionReason"`
 	BrokerVersion        string          `json:"brokerVersion"`
 	Value                json.RawMessage `json:"value"`
+	PartitionID          int             `json:"partitionId"`
+	Position             int64           `json:"position"`
+	SourceRecordPosition int64           `json:"sourceRecordPosition"`
+	Key                  int64           `json:"key"`
+	Timestamp            int64           `json:"timestamp"`
 }
 
 // ProcessInstanceValue is the value payload for PROCESS_INSTANCE records.
 type ProcessInstanceValue struct {
 	BpmnProcessID            string `json:"bpmnProcessId"`
-	Version                  int32  `json:"version"`
-	ProcessDefinitionKey     int64  `json:"processDefinitionKey"`
-	ProcessInstanceKey       int64  `json:"processInstanceKey"`
 	ElementID                string `json:"elementId"`
-	FlowScopeKey             int64  `json:"flowScopeKey"`
 	BpmnElementType          string `json:"bpmnElementType"`
-	ParentProcessInstanceKey int64  `json:"parentProcessInstanceKey"`
-	ParentElementInstanceKey int64  `json:"parentElementInstanceKey"`
 	BpmnEventType            string `json:"bpmnEventType"`
 	TenantID                 string `json:"tenantId"`
+	ProcessDefinitionKey     int64  `json:"processDefinitionKey"`
+	ProcessInstanceKey       int64  `json:"processInstanceKey"`
+	FlowScopeKey             int64  `json:"flowScopeKey"`
+	ParentProcessInstanceKey int64  `json:"parentProcessInstanceKey"`
+	ParentElementInstanceKey int64  `json:"parentElementInstanceKey"`
+	Version                  int32  `json:"version"`
 }
 
 // VariableValue is the value payload for VARIABLE records.
 type VariableValue struct {
 	Name                 string `json:"name"`
 	Value                string `json:"value"`
+	BpmnProcessID        string `json:"bpmnProcessId"`
+	TenantID             string `json:"tenantId"`
 	ScopeKey             int64  `json:"scopeKey"`
 	ProcessInstanceKey   int64  `json:"processInstanceKey"`
 	ProcessDefinitionKey int64  `json:"processDefinitionKey"`
-	BpmnProcessID        string `json:"bpmnProcessId"`
-	TenantID             string `json:"tenantId"`
 }
 
 // IncidentValue is the value payload for INCIDENT records.
@@ -55,56 +55,56 @@ type IncidentValue struct {
 	ErrorType            string `json:"errorType"`
 	ErrorMessage         string `json:"errorMessage"`
 	BpmnProcessID        string `json:"bpmnProcessId"`
-	ProcessInstanceKey   int64  `json:"processInstanceKey"`
 	ElementID            string `json:"elementId"`
+	TenantID             string `json:"tenantId"`
+	ProcessInstanceKey   int64  `json:"processInstanceKey"`
 	ElementInstanceKey   int64  `json:"elementInstanceKey"`
 	JobKey               int64  `json:"jobKey"`
 	ProcessDefinitionKey int64  `json:"processDefinitionKey"`
 	VariableScopeKey     int64  `json:"variableScopeKey"`
-	TenantID             string `json:"tenantId"`
 }
 
 // JobValue is the value payload for JOB records.
 type JobValue struct {
-	Type                     string         `json:"type"`
+	CustomHeaders            map[string]any `json:"customHeaders"`
+	Variables                map[string]any `json:"variables"`
 	Worker                   string         `json:"worker"`
-	Retries                  int32          `json:"retries"`
-	Deadline                 int64          `json:"deadline"`
+	TenantID                 string         `json:"tenantId"`
+	Type                     string         `json:"type"`
 	ErrorMessage             string         `json:"errorMessage"`
 	ErrorCode                string         `json:"errorCode"`
 	ElementID                string         `json:"elementId"`
-	ElementInstanceKey       int64          `json:"elementInstanceKey"`
 	BpmnProcessID            string         `json:"bpmnProcessId"`
-	ProcessDefinitionVersion int32          `json:"processDefinitionVersion"`
+	Deadline                 int64          `json:"deadline"`
 	ProcessInstanceKey       int64          `json:"processInstanceKey"`
 	ProcessDefinitionKey     int64          `json:"processDefinitionKey"`
-	CustomHeaders            map[string]any `json:"customHeaders"`
-	Variables                map[string]any `json:"variables"`
-	TenantID                 string         `json:"tenantId"`
+	ElementInstanceKey       int64          `json:"elementInstanceKey"`
+	ProcessDefinitionVersion int32          `json:"processDefinitionVersion"`
+	Retries                  int32          `json:"retries"`
 }
 
 // ProcessMessageSubscriptionValue is the value payload for PROCESS_MESSAGE_SUBSCRIPTION records.
 type ProcessMessageSubscriptionValue struct {
-	ProcessInstanceKey int64          `json:"processInstanceKey"`
-	ElementInstanceKey int64          `json:"elementInstanceKey"`
+	Variables          map[string]any `json:"variables"`
 	MessageName        string         `json:"messageName"`
 	CorrelationKey     string         `json:"correlationKey"`
 	BpmnProcessID      string         `json:"bpmnProcessId"`
-	MessageKey         int64          `json:"messageKey"`
 	ElementID          string         `json:"elementId"`
-	Variables          map[string]any `json:"variables"`
-	IsInterrupting     bool           `json:"isInterrupting"`
 	TenantID           string         `json:"tenantId"`
+	ProcessInstanceKey int64          `json:"processInstanceKey"`
+	ElementInstanceKey int64          `json:"elementInstanceKey"`
+	MessageKey         int64          `json:"messageKey"`
+	IsInterrupting     bool           `json:"isInterrupting"`
 }
 
 // DeploymentValue is the value payload for DEPLOYMENT records.
 type DeploymentValue struct {
+	TenantID                     string                           `json:"tenantId"`
 	Resources                    []DeploymentResource             `json:"resources"`
 	ProcessesMetadata            []DeploymentProcessMetadata      `json:"processesMetadata"`
 	DecisionRequirementsMetadata []DeploymentDecisionReqsMetadata `json:"decisionRequirementsMetadata"`
 	DecisionsMetadata            []DeploymentDecisionMetadata     `json:"decisionsMetadata"`
 	FormMetadata                 []DeploymentFormMetadata         `json:"formMetadata"`
-	TenantID                     string                           `json:"tenantId"`
 	DeploymentKey                int64                            `json:"deploymentKey"`
 }
 
@@ -116,28 +116,28 @@ type DeploymentResource struct {
 // DeploymentProcessMetadata describes a process within a deployment.
 type DeploymentProcessMetadata struct {
 	BpmnProcessID        string `json:"bpmnProcessId"`
-	Version              int32  `json:"version"`
-	ProcessDefinitionKey int64  `json:"processDefinitionKey"`
 	ResourceName         string `json:"resourceName"`
+	ProcessDefinitionKey int64  `json:"processDefinitionKey"`
+	Version              int32  `json:"version"`
 	IsDuplicate          bool   `json:"isDuplicate"`
 }
 
 // DeploymentFormMetadata describes a form within a deployment.
 type DeploymentFormMetadata struct {
 	FormID       string `json:"formId"`
-	Version      int32  `json:"version"`
-	FormKey      int64  `json:"formKey"`
 	ResourceName string `json:"resourceName"`
+	FormKey      int64  `json:"formKey"`
+	Version      int32  `json:"version"`
 	IsDuplicate  bool   `json:"isDuplicate"`
 }
 
 // DeploymentDecisionMetadata describes a decision within a deployment.
 type DeploymentDecisionMetadata struct {
 	DecisionID             string `json:"decisionId"`
-	Version                int32  `json:"version"`
-	DecisionKey            int64  `json:"decisionKey"`
 	DecisionName           string `json:"decisionName"`
 	DecisionRequirementsID string `json:"decisionRequirementsId"`
+	DecisionKey            int64  `json:"decisionKey"`
+	Version                int32  `json:"version"`
 	IsDuplicate            bool   `json:"isDuplicate"`
 }
 
@@ -151,75 +151,75 @@ type DeploymentDecisionReqsMetadata struct {
 
 // MessageValue is the value payload for MESSAGE records.
 type MessageValue struct {
+	Variables      map[string]any `json:"variables"`
 	Name           string         `json:"name"`
 	CorrelationKey string         `json:"correlationKey"`
 	MessageID      string         `json:"messageId"`
-	TimeToLive     int64          `json:"timeToLive"`
-	Variables      map[string]any `json:"variables"`
 	TenantID       string         `json:"tenantId"`
+	TimeToLive     int64          `json:"timeToLive"`
 	Deadline       int64          `json:"deadline"`
 }
 
 // MessageStartEventSubscriptionValue is the value payload for MESSAGE_START_EVENT_SUBSCRIPTION records.
 type MessageStartEventSubscriptionValue struct {
-	ProcessDefinitionKey int64          `json:"processDefinitionKey"`
+	Variables            map[string]any `json:"variables"`
 	StartEventID         string         `json:"startEventId"`
 	MessageName          string         `json:"messageName"`
 	BpmnProcessID        string         `json:"bpmnProcessId"`
 	CorrelationKey       string         `json:"correlationKey"`
+	TenantID             string         `json:"tenantId"`
+	ProcessDefinitionKey int64          `json:"processDefinitionKey"`
 	MessageKey           int64          `json:"messageKey"`
 	ProcessInstanceKey   int64          `json:"processInstanceKey"`
-	Variables            map[string]any `json:"variables"`
-	TenantID             string         `json:"tenantId"`
 }
 
 // TimerValue is the value payload for TIMER records.
 type TimerValue struct {
+	TargetElementID      string `json:"targetElementId"`
+	TenantID             string `json:"tenantId"`
 	ElementInstanceKey   int64  `json:"elementInstanceKey"`
 	DueDate              int64  `json:"dueDate"`
-	Repetitions          int32  `json:"repetitions"`
-	TargetElementID      string `json:"targetElementId"`
 	ProcessInstanceKey   int64  `json:"processInstanceKey"`
 	ProcessDefinitionKey int64  `json:"processDefinitionKey"`
-	TenantID             string `json:"tenantId"`
+	Repetitions          int32  `json:"repetitions"`
 }
 
 // FormValue is the value payload for FORM records.
 type FormValue struct {
 	FormID       string `json:"formId"`
-	Version      int32  `json:"version"`
-	FormKey      int64  `json:"formKey"`
 	ResourceName string `json:"resourceName"`
-	IsDuplicate  bool   `json:"isDuplicate"`
 	TenantID     string `json:"tenantId"`
+	FormKey      int64  `json:"formKey"`
+	Version      int32  `json:"version"`
+	IsDuplicate  bool   `json:"isDuplicate"`
 }
 
 // ProcessCreationValue is the value payload for PROCESS_INSTANCE_CREATION records.
 type ProcessCreationValue struct {
+	Variables            map[string]any `json:"variables"`
 	BpmnProcessID        string         `json:"bpmnProcessId"`
-	Version              int32          `json:"version"`
+	TenantID             string         `json:"tenantId"`
 	ProcessDefinitionKey int64          `json:"processDefinitionKey"`
 	ProcessInstanceKey   int64          `json:"processInstanceKey"`
-	Variables            map[string]any `json:"variables"`
-	TenantID             string         `json:"tenantId"`
+	Version              int32          `json:"version"`
 }
 
 // ProcessDefinitionValue is the value payload for PROCESS records (definition, not instance).
 type ProcessDefinitionValue struct {
 	BpmnProcessID        string `json:"bpmnProcessId"`
-	Version              int32  `json:"version"`
-	ProcessDefinitionKey int64  `json:"processDefinitionKey"`
 	ResourceName         string `json:"resourceName"`
 	TenantID             string `json:"tenantId"`
+	ProcessDefinitionKey int64  `json:"processDefinitionKey"`
+	Version              int32  `json:"version"`
 }
 
 // ProcessEventRecordValue is the value payload for PROCESS_EVENT records.
 type ProcessEventRecordValue struct {
+	Variables            map[string]any `json:"variables"`
+	TargetElementID      string         `json:"targetElementId"`
+	TenantID             string         `json:"tenantId"`
 	ScopeKey             int64          `json:"scopeKey"`
 	ProcessDefinitionKey int64          `json:"processDefinitionKey"`
-	TargetElementID      string         `json:"targetElementId"`
-	Variables            map[string]any `json:"variables"`
-	TenantID             string         `json:"tenantId"`
 }
 
 // ParseValue unmarshals the record's Value into the specified type.
@@ -264,9 +264,9 @@ type streamWaiter struct {
 // RecordStream accumulates exported records from Zeebe container logs.
 // It supports both point-in-time filtering and blocking waits for new records.
 type RecordStream struct {
-	mu      sync.Mutex
 	records []Record
 	waiters []streamWaiter
+	mu      sync.Mutex
 }
 
 // NewRecordStream creates an empty RecordStream.
@@ -312,7 +312,7 @@ func (rs *RecordStream) Filter(pred func(Record) bool) []Record {
 	return result
 }
 
-// WaitFor blocks until a record matching the predicate appears or ctx is cancelled.
+// WaitFor blocks until a record matching the predicate appears or ctx is canceled.
 // It first checks existing records, then waits for new ones.
 func (rs *RecordStream) WaitFor(ctx context.Context, pred func(Record) bool) (Record, error) {
 	rs.mu.Lock()

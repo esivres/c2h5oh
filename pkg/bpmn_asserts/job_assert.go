@@ -10,9 +10,9 @@ import (
 // JobAssert provides fluent assertions on a Zeebe job.
 type JobAssert struct {
 	t      testing.TB
-	jobKey int64
-	stream *RecordStream
 	ctx    context.Context
+	stream *RecordStream
+	jobKey int64
 }
 
 // ForJob creates a new JobAssert for the given job key.

@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (s *Server) DeleteResource(ctx context.Context, req *pb.DeleteResourceRequest) (*pb.DeleteResourceResponse, error) {
+func (s *Server) DeleteResource(_ context.Context, req *pb.DeleteResourceRequest) (*pb.DeleteResourceResponse, error) {
 	if req.ResourceKey == 0 {
 		return nil, status.Error(codes.InvalidArgument, "resource_key is required")
 	}

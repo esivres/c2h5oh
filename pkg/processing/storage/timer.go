@@ -16,32 +16,15 @@ const (
 
 // Timer is a mutable entity representing a scheduled timer event.
 type Timer struct {
-	// Key is the unique identifier.
-	Key uint64
-
-	// ProcessInstanceKey links to the owning process instance.
-	ProcessInstanceKey uint64
-
-	// ElementInstanceKey links to the element instance that created this timer.
-	ElementInstanceKey uint64
-
-	// ProcessDefinitionKey links to the process definition.
+	DueDate              time.Time
+	CreatedAt            time.Time
+	Key                  uint64
+	ProcessInstanceKey   uint64
+	ElementInstanceKey   uint64
 	ProcessDefinitionKey uint64
-
-	// State is the current lifecycle state.
-	State TimerState
-
-	// DueDate is when the timer should trigger.
-	DueDate time.Time
-
-	// Repetitions is the remaining repetition count (-1 for infinite, 0 for one-shot).
-	Repetitions int
-
-	// CycleDuration is the interval between repetitions.
-	CycleDuration time.Duration
-
-	// CreatedAt is the creation timestamp.
-	CreatedAt time.Time
+	State                TimerState
+	Repetitions          int
+	CycleDuration        time.Duration
 }
 
 // TimerRepository manages timer storage.

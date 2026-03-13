@@ -2,11 +2,11 @@ package bpmn_model
 
 // ChildSpec describes a child element relationship on a ModelElementType.
 type ChildSpec struct {
+	OwnerType     *ModelElementType
 	ChildTypeName string
 	ChildTypeNS   string
 	MinOccurs     int
-	MaxOccurs     int // -1 for unbounded
-	OwnerType     *ModelElementType
+	MaxOccurs     int
 }
 
 // ChildElement provides typed access to a single child element (maxOccurs=1).

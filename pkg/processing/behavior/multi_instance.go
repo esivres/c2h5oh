@@ -13,11 +13,11 @@ import (
 
 // multiInstanceInfo holds the parsed multi-instance configuration for an element.
 type multiInstanceInfo struct {
+	InputCollection  string
+	InputElement     string
+	OutputCollection string
+	OutputElement    string
 	IsSequential     bool
-	InputCollection  string // FEEL expression
-	InputElement     string // variable name for each item
-	OutputCollection string // variable name for collected results
-	OutputElement    string // FEEL expression for each result
 }
 
 // getMultiInstanceInfo checks if a BPMN element has multi-instance loop characteristics.
@@ -126,8 +126,12 @@ func handleMultiInstanceActivation(
 			Origin:             intent.Internal,
 			ProcessInstanceKey: i.ProcessInstanceKey,
 		},
-		ScopeKey:  i.Key,
-		Variables: mustJSON(map[string]any{"__mi_collection": json.RawMessage(collJSON), "__mi_count": json.RawMessage(countJSON), "__mi_completed": 0}),
+		ScopeKey: i.Key,
+		Variables: mustJSON(map[string]any{
+			"__mi_collection": json.RawMessage(collJSON),
+			"__mi_count":      json.RawMessage(countJSON),
+			"__mi_completed":  0,
+		}),
 	})
 
 	if mi.IsSequential {

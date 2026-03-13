@@ -11,9 +11,9 @@ import (
 // This is the Go equivalent of the Java ProcessAssert.
 type ProcessDefinitionAssert struct {
 	t                    testing.TB
-	processDefinitionKey int64
-	stream               *RecordStream
 	ctx                  context.Context
+	stream               *RecordStream
+	processDefinitionKey int64
 }
 
 // ForProcessDefinition creates a new ProcessDefinitionAssert for the given process definition key.
@@ -129,7 +129,7 @@ func (a *ProcessDefinitionAssert) instanceCount() int {
 		if json.Unmarshal(r.Value, &v) != nil {
 			return false
 		}
-		return v.ProcessDefinitionKey == a.processDefinitionKey && v.BpmnElementType == "PROCESS"
+		return v.ProcessDefinitionKey == a.processDefinitionKey && v.BpmnElementType == BpmnElementTypeProcess
 	})
 
 	for _, r := range records {

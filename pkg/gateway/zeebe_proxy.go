@@ -42,7 +42,7 @@ func NewZeebeProxy(processor *engine.Processor, store storage.Store, jobNotifier
 
 // --- Topology ---
 
-func (z *ZeebeProxy) Topology(_ context.Context, _ *zeebepb.TopologyRequest) (*zeebepb.TopologyResponse, error) {
+func (*ZeebeProxy) Topology(_ context.Context, _ *zeebepb.TopologyRequest) (*zeebepb.TopologyResponse, error) {
 	return &zeebepb.TopologyResponse{
 		Brokers: []*zeebepb.BrokerInfo{
 			{
@@ -687,7 +687,8 @@ func (z *ZeebeProxy) deploySingleProcess(ctx context.Context, name string, defin
 	z.processor.Submit(deployIntent)
 
 	// Wait for the deploy notification or timeout
-	deadline := time.After(10 * time.Second)
+	const deployTimeout = 10 * time.Second
+	deadline := time.After(deployTimeout)
 	for {
 		select {
 		case <-ctx.Done():

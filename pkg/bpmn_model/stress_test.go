@@ -431,7 +431,7 @@ func TestStress_ParseAllFiles(t *testing.T) {
 			require.NoError(t, err, "Re-parse of converted XML failed")
 
 			procs2 := GetTypedElements[Process](bmi2.ModelInstance)
-			assert.Equal(t, len(procs), len(procs2), "Process count mismatch after round-trip")
+			assert.Len(t, procs2, len(procs), "Process count mismatch after round-trip")
 		})
 	}
 }
@@ -459,5 +459,5 @@ func assertRoundTrip(t *testing.T, bmi *BpmnModelInstance) {
 
 	procs1 := GetTypedElements[Process](bmi.ModelInstance)
 	procs2 := GetTypedElements[Process](bmi2.ModelInstance)
-	assert.Equal(t, len(procs1), len(procs2), "Process count changed after round-trip")
+	assert.Len(t, procs2, len(procs1), "Process count changed after round-trip")
 }

@@ -16,11 +16,11 @@ func nextId(prefix string) string {
 // --- Builder Context (shared state across builder chain) ---
 
 type builderCtx struct {
-	bmi          *BpmnModelInstance
 	process      Process
 	currentNode  FlowNode
-	gatewayStack []Gateway
+	bmi          *BpmnModelInstance
 	condExpr     string
+	gatewayStack []Gateway
 	defaultFlow  bool
 	diGenerated  bool
 }
@@ -50,7 +50,7 @@ func (ctx *builderCtx) createFlowNodeAndConnect(bpmnElementName string, id strin
 	return node
 }
 
-func (ctx *builderCtx) createSequenceFlow(source, target FlowNode) SequenceFlow {
+func (ctx *builderCtx) createSequenceFlow(source, target FlowNode) {
 	mi := ctx.bmi.ModelInstance
 	flowType := bpmnModel.GetTypeByQName(BPMN20_NS, BPMN_ELEMENT_SEQUENCE_FLOW)
 	flowInst, _ := mi.NewInstance(flowType)
@@ -88,7 +88,6 @@ func (ctx *builderCtx) createSequenceFlow(source, target FlowNode) SequenceFlow 
 	}
 
 	ctx.process.AddFlowElement(flow)
-	return flow
 }
 
 func addFlowRef(mi *ModelInstance, node FlowNode, elementName string, flowId string) {

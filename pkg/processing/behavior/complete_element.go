@@ -61,7 +61,10 @@ func completeElement(ctx context.Context, s storage.Store, i *intent.CompleteEle
 // resolveExclusiveGateway evaluates conditions on outgoing flows and returns the target
 // of the first flow whose condition is true, or the default flow target.
 // Returns nil if no flow can be taken.
-func resolveExclusiveGateway(ctx context.Context, s storage.Store, gw bpmn_model.ExclusiveGateway, scopeKey uint64) (bpmn_model.FlowNode, error) {
+func resolveExclusiveGateway(
+	ctx context.Context, s storage.Store,
+	gw bpmn_model.ExclusiveGateway, scopeKey uint64,
+) (bpmn_model.FlowNode, error) {
 	outgoing := gw.GetOutgoingSequenceFlows()
 	if len(outgoing) == 0 {
 		return nil, nil
@@ -123,7 +126,10 @@ func resolveExclusiveGateway(ctx context.Context, s storage.Store, gw bpmn_model
 
 // resolveInclusiveGateway evaluates conditions on all outgoing flows and returns targets
 // for ALL flows whose conditions are true. If none are true, returns the default flow target.
-func resolveInclusiveGateway(ctx context.Context, s storage.Store, gw bpmn_model.InclusiveGateway, scopeKey uint64) ([]bpmn_model.FlowNode, error) {
+func resolveInclusiveGateway(
+	ctx context.Context, s storage.Store,
+	gw bpmn_model.InclusiveGateway, scopeKey uint64,
+) ([]bpmn_model.FlowNode, error) {
 	outgoing := gw.GetOutgoingSequenceFlows()
 	if len(outgoing) == 0 {
 		return nil, nil
@@ -186,46 +192,47 @@ func resolveInclusiveGateway(ctx context.Context, s storage.Store, gw bpmn_model
 }
 
 // handleErrorEndEvent checks if the end event has an errorEventDefinition.
-// If so, propagates the error up to find a matching boundary error event on the parent scope.
-// Returns nil intents if this is NOT an error end event (caller should continue normal logic).
-func handleErrorEndEvent(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, ei *storage.ElementInstance, piKey uint64) ([]intent.Intent, error) {
-	bpmnNS := "http://www.omg.org/spec/BPMN/20100524/MODEL"
-
-	// Check if this end event has an errorEventDefinition
+// resolveErrorEndEventCode checks whether the given elementId is an error end event and returns its error code.
+func resolveErrorEndEventCode(bmi *bpmn_model.BpmnModelInstance, elementId string) (string, bool) {
 	endEvents := bpmn_model.GetTypedElements[bpmn_model.EndEvent](bmi.ModelInstance)
-	var errorCode string
-	var isErrorEnd bool
-
 	for _, ee := range endEvents {
-		if ee.GetId() != ei.ElementId {
+		if ee.GetId() != elementId {
 			continue
 		}
 		dom := ee.(bpmn_model.BaseElement).GetDomElement()
 		if dom == nil {
-			break
+			return "", false
 		}
 		errorDefs := dom.GetChildElementsByNS(bpmnNS, "errorEventDefinition")
 		if len(errorDefs) == 0 {
-			break
+			return "", false
 		}
-		isErrorEnd = true
-		// Get errorRef → resolve error code
 		errorRef := errorDefs[0].GetAttribute("errorRef")
-		if errorRef != "" {
-			errors := bpmn_model.GetTypedElements[bpmn_model.Error](bmi.ModelInstance)
-			for _, e := range errors {
-				if e.GetId() == errorRef {
-					errorCode = e.GetErrorCode()
-					break
+		if errorRef == "" {
+			return "", true
+		}
+		errors := bpmn_model.GetTypedElements[bpmn_model.Error](bmi.ModelInstance)
+		for _, e := range errors {
+			if e.GetId() == errorRef {
+				if code := e.GetErrorCode(); code != "" {
+					return code, true
 				}
-			}
-			if errorCode == "" {
-				errorCode = errorRef
+				break
 			}
 		}
-		break
+		return errorRef, true
 	}
+	return "", false
+}
 
+// If so, propagates the error up to find a matching boundary error event on the parent scope.
+// Returns nil intents if this is NOT an error end event (caller should continue normal logic).
+func handleErrorEndEvent(
+	ctx context.Context, s storage.Store,
+	bmi *bpmn_model.BpmnModelInstance,
+	ei *storage.ElementInstance, piKey uint64,
+) ([]intent.Intent, error) {
+	errorCode, isErrorEnd := resolveErrorEndEventCode(bmi, ei.ElementId)
 	if !isErrorEnd {
 		return nil, nil // not an error end event
 	}
@@ -251,23 +258,21 @@ func handleErrorEndEvent(ctx context.Context, s storage.Store, bmi *bpmn_model.B
 					return nil, err
 				}
 				intents = append(intents, termIntents...)
-				// Terminate the subprocess itself
+				// Terminate the subprocess itself + activate the boundary error event
 				intents = append(intents, &intent.TerminateElementIntent{
 					Header: intent.Header{
 						Origin:             intent.Internal,
 						ProcessInstanceKey: piKey,
 					},
 					ElementInstanceKey: scopeKey,
-				})
-				// Activate the boundary error event
-				intents = append(intents, &intent.ActivateElementIntent{
+				}, &intent.ActivateElementIntent{
 					Header: intent.Header{
 						Origin:             intent.Internal,
 						ProcessInstanceKey: piKey,
 					},
 					ProcessDefinitionKey: ei.ProcessDefinitionKey,
 					ElementId:            boundaryId,
-					ElementType:          "boundaryEvent",
+					ElementType:          elementTypeBoundaryEvent,
 					FlowScopeKey:         scopeEI.FlowScopeKey,
 				})
 				return intents, nil
@@ -311,7 +316,11 @@ func handleErrorEndEvent(ctx context.Context, s storage.Store, bmi *bpmn_model.B
 
 // handleBoundaryEventInterruption checks if the boundary event is interrupting (cancelActivity=true).
 // If so, terminates the attached element instance.
-func handleBoundaryEventInterruption(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, ei *storage.ElementInstance, piKey uint64) []intent.Intent {
+func handleBoundaryEventInterruption(
+	ctx context.Context, s storage.Store,
+	bmi *bpmn_model.BpmnModelInstance,
+	ei *storage.ElementInstance, piKey uint64,
+) []intent.Intent {
 	boundaryEvents := bpmn_model.GetTypedElements[bpmn_model.BoundaryEvent](bmi.ModelInstance)
 	for _, be := range boundaryEvents {
 		if be.GetId() != ei.ElementId {
@@ -355,8 +364,6 @@ func handleBoundaryEventInterruption(ctx context.Context, s storage.Store, bmi *
 // handleLinkThrowEvent checks if the intermediate throw event has a linkEventDefinition.
 // If so, finds the matching catch link event with the same name and activates it.
 func handleLinkThrowEvent(bmi *bpmn_model.BpmnModelInstance, ei *storage.ElementInstance, piKey uint64) []intent.Intent {
-	bpmnNS := "http://www.omg.org/spec/BPMN/20100524/MODEL"
-
 	// Find link name on this throw event
 	var linkName string
 	flowNodes := bpmn_model.GetTypedElements[bpmn_model.FlowNode](bmi.ModelInstance)
@@ -417,8 +424,6 @@ func handleLinkThrowEvent(bmi *bpmn_model.BpmnModelInstance, ei *storage.Element
 // handleSignalEndEvent checks if the end event has a signalEventDefinition.
 // If so, returns a ThrowSignalIntent.
 func handleSignalEndEvent(bmi *bpmn_model.BpmnModelInstance, ei *storage.ElementInstance) []intent.Intent {
-	bpmnNS := "http://www.omg.org/spec/BPMN/20100524/MODEL"
-
 	endEvents := bpmn_model.GetTypedElements[bpmn_model.EndEvent](bmi.ModelInstance)
 	for _, ee := range endEvents {
 		if ee.GetId() != ei.ElementId {
@@ -456,8 +461,6 @@ func handleSignalEndEvent(bmi *bpmn_model.BpmnModelInstance, ei *storage.Element
 
 // isTerminateEndEvent checks if the given end event has a terminateEventDefinition child.
 func isTerminateEndEvent(bmi *bpmn_model.BpmnModelInstance, elementId string) bool {
-	bpmnNS := "http://www.omg.org/spec/BPMN/20100524/MODEL"
-
 	endEvents := bpmn_model.GetTypedElements[bpmn_model.EndEvent](bmi.ModelInstance)
 	for _, ee := range endEvents {
 		if ee.GetId() != elementId {
@@ -501,7 +504,11 @@ func terminateScopeElements(ctx context.Context, s storage.Store, piKey, scopeKe
 
 // cancelEventBasedGatewaySiblings checks if the completed catch event was downstream
 // of an event-based gateway. If so, terminates all sibling catch event instances.
-func cancelEventBasedGatewaySiblings(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, completedEI *storage.ElementInstance, piKey uint64) []intent.Intent {
+func cancelEventBasedGatewaySiblings(
+	ctx context.Context, s storage.Store,
+	bmi *bpmn_model.BpmnModelInstance,
+	completedEI *storage.ElementInstance, piKey uint64,
+) []intent.Intent {
 	// Find the completed element in BPMN model
 	flowNodes := bpmn_model.GetTypedElements[bpmn_model.FlowNode](bmi.ModelInstance)
 	var completedNode bpmn_model.FlowNode

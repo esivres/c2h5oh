@@ -78,7 +78,7 @@ func (r *timerRepo) FindByProcessInstance(ctx context.Context, piKey uint64) ([]
 	return r.scanRows(rows)
 }
 
-func (r *timerRepo) scanRows(rows *sql.Rows) ([]*storage.Timer, error) {
+func (*timerRepo) scanRows(rows *sql.Rows) ([]*storage.Timer, error) {
 	var result []*storage.Timer
 	for rows.Next() {
 		timer := &storage.Timer{}

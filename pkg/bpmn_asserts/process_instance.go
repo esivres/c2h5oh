@@ -1,6 +1,7 @@
 package bpmn_asserts
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,9 +15,9 @@ import (
 // check point-in-time — call them after a positive assertion that establishes a known state.
 type ProcessInstanceAssert struct {
 	t      testing.TB
-	key    int64
-	stream *RecordStream
 	ctx    context.Context
+	stream *RecordStream
+	key    int64
 }
 
 // ForProcessInstance creates a new ProcessInstanceAssert for the given process instance key.
@@ -228,7 +229,7 @@ func (a *ProcessInstanceAssert) HasVariable(name string) *ProcessInstanceAssert 
 
 // HasVariableWithValue asserts that a variable exists with the given name and value.
 // The expectedValue is JSON-compared: strings are compared as JSON strings,
-// other types are marshalled to JSON first.
+// other types are marshaled to JSON first.
 func (a *ProcessInstanceAssert) HasVariableWithValue(name string, expectedValue any) *ProcessInstanceAssert {
 	a.t.Helper()
 	vars := a.processInstanceVariables()
@@ -438,13 +439,13 @@ func (a *ProcessInstanceAssert) isProcessInstanceRecord(r Record) bool {
 	return v.ProcessInstanceKey == a.key
 }
 
-func (a *ProcessInstanceAssert) valueElementID(r Record) string {
+func (*ProcessInstanceAssert) valueElementID(r Record) string {
 	var v ProcessInstanceValue
 	_ = json.Unmarshal(r.Value, &v)
 	return v.ElementID
 }
 
-func (a *ProcessInstanceAssert) valueBpmnElementType(r Record) string {
+func (*ProcessInstanceAssert) valueBpmnElementType(r Record) string {
 	var v ProcessInstanceValue
 	_ = json.Unmarshal(r.Value, &v)
 	return v.BpmnElementType
@@ -455,7 +456,7 @@ func (a *ProcessInstanceAssert) waitForProcessIntent(intent ZeebeIntent, msgFmt 
 	_, err := a.stream.WaitFor(a.ctx, func(r Record) bool {
 		return a.isProcessInstanceRecord(r) &&
 			r.Intent == intent &&
-			a.valueBpmnElementType(r) == "PROCESS"
+			a.valueBpmnElementType(r) == BpmnElementTypeProcess
 	})
 	if err != nil {
 		a.t.Fatalf(msgFmt+", but timed out waiting", a.key)
@@ -466,7 +467,7 @@ func (a *ProcessInstanceAssert) hasProcessIntent(intent ZeebeIntent) bool {
 	records := a.stream.Filter(func(r Record) bool {
 		return a.isProcessInstanceRecord(r) &&
 			r.Intent == intent &&
-			a.valueBpmnElementType(r) == "PROCESS"
+			a.valueBpmnElementType(r) == BpmnElementTypeProcess
 	})
 	return len(records) > 0
 }
@@ -538,8 +539,8 @@ func (a *ProcessInstanceAssert) processInstanceVariables() map[string]string {
 
 func (a *ProcessInstanceAssert) openMessageSubscriptions() map[string]struct{} {
 	type subKey struct {
-		elementInstanceKey int64
 		messageName        string
+		elementInstanceKey int64
 	}
 
 	created := make(map[subKey]struct{})
@@ -615,7 +616,7 @@ func (a *ProcessInstanceAssert) calledProcessRecords() []Record {
 		if json.Unmarshal(r.Value, &v) != nil {
 			return false
 		}
-		return v.ParentProcessInstanceKey == a.key && v.BpmnElementType == "PROCESS"
+		return v.ParentProcessInstanceKey == a.key && v.BpmnElementType == BpmnElementTypeProcess
 	})
 }
 
@@ -652,7 +653,7 @@ func jsonEqual(a, b string) bool {
 
 	aBytes, _ := json.Marshal(aVal)
 	bBytes, _ := json.Marshal(bVal)
-	return string(aBytes) == string(bBytes)
+	return bytes.Equal(aBytes, bBytes)
 }
 
 // ExtractVariables returns all current variables for this process instance as a map.

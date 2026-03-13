@@ -91,7 +91,7 @@ func TestFindProcessEvents_TriggeredByTimer_NoMatch(t *testing.T) {
 func TestFindProcessEvents_FindProcessInstance_ByIndex(t *testing.T) {
 	stream := NewRecordStream()
 
-	for i := int64(0); i < 3; i++ {
+	for i := range int64(3) {
 		rec := makeRecord("PROCESS_INSTANCE", "EVENT", "ELEMENT_ACTIVATED", i+1, ProcessInstanceValue{
 			ProcessInstanceKey: 100 + i,
 			BpmnElementType:    "PROCESS",
@@ -270,19 +270,14 @@ func TestPrintCompact_MessageRecords(t *testing.T) {
 	assert.Contains(t, output, "paymentReceived")
 }
 
-// Helper to build raw JSON for feedRecords from Record
-func init() {
-	// verify feedRecords works correctly - sanity check
+func TestFeedRecords_SanityCheck(t *testing.T) {
 	stream := NewRecordStream()
 	rec := makeProcessInstanceRecord("ELEMENT_ACTIVATED", 1, 100, "start", "START_EVENT")
-	raw, _ := json.Marshal(rec)
+	raw, err := json.Marshal(rec)
+	require.NoError(t, err)
 	stream.Add(raw)
 
-	records := stream.Filter(func(r Record) bool { return true })
-	if len(records) != 1 {
-		panic("feedRecords sanity check failed")
-	}
-	if records[0].ValueType != "PROCESS_INSTANCE" {
-		panic("feedRecords sanity check: wrong valueType")
-	}
+	records := stream.Filter(func(Record) bool { return true })
+	require.Len(t, records, 1)
+	assert.Equal(t, ZeebeValueType("PROCESS_INSTANCE"), records[0].ValueType)
 }

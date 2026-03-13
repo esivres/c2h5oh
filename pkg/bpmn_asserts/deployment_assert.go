@@ -10,9 +10,9 @@ import (
 // DeploymentAssert provides fluent assertions on a Zeebe deployment.
 type DeploymentAssert struct {
 	t             testing.TB
-	deploymentKey int64
-	stream        *RecordStream
 	ctx           context.Context
+	stream        *RecordStream
+	deploymentKey int64
 }
 
 // ForDeployment creates a new DeploymentAssert for the given deployment key.

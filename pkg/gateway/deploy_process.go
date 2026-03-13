@@ -68,7 +68,8 @@ func (s *Server) DeployProcess(ctx context.Context, req *pb.DeployProcessRequest
 	s.processor.Submit(deployIntent)
 
 	// Wait for the deploy notification or timeout
-	deadline := time.After(10 * time.Second)
+	const deployTimeout = 10 * time.Second
+	deadline := time.After(deployTimeout)
 	for {
 		select {
 		case <-ctx.Done():

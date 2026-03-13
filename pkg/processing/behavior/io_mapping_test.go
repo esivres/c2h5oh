@@ -88,7 +88,7 @@ func TestInputMapping_EvalAndCreateVariable(t *testing.T) {
 
 	var val any
 	require.NoError(t, json.Unmarshal(v.Value, &val))
-	assert.Equal(t, float64(500), val) // JSON numbers are float64
+	assert.InDelta(t, float64(500), val, 0.01) // JSON numbers are float64
 }
 
 func TestOutputMapping_EvalAndUpdateVariable(t *testing.T) {

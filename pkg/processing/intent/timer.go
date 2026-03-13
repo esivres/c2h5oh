@@ -4,22 +4,12 @@ import "time"
 
 // CreateTimerIntent requests creation of a timer.
 type CreateTimerIntent struct {
-	Header
-
-	// ElementInstanceKey is the element instance that owns this timer.
-	ElementInstanceKey uint64
-
-	// ProcessDefinitionKey links to the process definition.
-	ProcessDefinitionKey uint64
-
-	// DueDate is when the timer should trigger.
 	DueDate time.Time
-
-	// Repetitions is the number of times to repeat (-1 for infinite, 0 for one-shot).
-	Repetitions int
-
-	// CycleDuration is the interval between repetitions (used for timer cycle).
-	CycleDuration time.Duration
+	Header
+	ElementInstanceKey   uint64
+	ProcessDefinitionKey uint64
+	Repetitions          int
+	CycleDuration        time.Duration
 }
 
 func (i *CreateTimerIntent) IntentType() Type { return CreateTimer }

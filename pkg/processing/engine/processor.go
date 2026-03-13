@@ -21,31 +21,31 @@ type IntentObserver func(i intent.Intent)
 // It dequeues intents, looks up behaviors, executes them transactionally,
 // and publishes events. All processing is sequential (single-writer per partition).
 type Processor struct {
-	partitionId uint8
 	store       storage.Store
-	registry    *behavior.Registry
 	exporter    export.Exporter
+	registry    *behavior.Registry
 	queue       *Queue
 	keyGen      *KeyGenerator
 	collector   *export.Collector
+	logger      *slog.Logger
 	retryPolicy RetryPolicy
 	observers   []IntentObserver
-	logger      *slog.Logger
+	partitionId uint8
 }
 
 // Config holds configuration for a Processor.
 type Config struct {
-	PartitionId   uint8
 	Store         storage.Store
-	Registry      *behavior.Registry
 	Exporter      export.Exporter
+	Registry      *behavior.Registry
+	RetryPolicy   *RetryPolicy
+	TimerChecker  *TimerCheckerConfig
+	Logger        *slog.Logger
 	Observers     []IntentObserver
 	QueueSize     int
 	StartSequence uint64
 	StartPosition uint64
-	RetryPolicy   *RetryPolicy
-	TimerChecker  *TimerCheckerConfig
-	Logger        *slog.Logger
+	PartitionId   uint8
 }
 
 // NewProcessor creates a new partition processor.
@@ -125,38 +125,38 @@ func (p *Processor) RunWithTimerChecker(ctx context.Context, timerCfg *TimerChec
 
 // processIntent executes a single intent transactionally.
 func (p *Processor) processIntent(ctx context.Context, i intent.Intent) error {
-	// Unwrap retry envelope to get the real intent for behavior lookup
-	real := unwrapIntent(i)
+	// Unwrap retry envelope to get the actual intent for behavior lookup
+	actual := unwrapIntent(i)
 
 	// Secondary dispatch by element type if the intent supports it
 	var b behavior.Behavior
-	if et, ok := real.(behavior.ElementTyped); ok && et.GetElementType() != "" {
-		b = p.registry.LookupWithElementType(real.IntentType(), et.GetElementType())
+	if et, ok := actual.(behavior.ElementTyped); ok && et.GetElementType() != "" {
+		b = p.registry.LookupWithElementType(actual.IntentType(), et.GetElementType())
 	} else {
-		b = p.registry.Lookup(real.IntentType())
+		b = p.registry.Lookup(actual.IntentType())
 	}
 	if b == nil {
-		return fmt.Errorf("no behavior registered for intent %q", real.IntentType())
+		return fmt.Errorf("no behavior registered for intent %q", actual.IntentType())
 	}
 
 	p.logger.Debug("processing intent",
-		"intent", real.IntentType(),
-		"processInstance", real.GetProcessInstanceKey(),
+		"intent", actual.IntentType(),
+		"processInstance", actual.GetProcessInstanceKey(),
 	)
 
 	// Execute behavior within a storage transaction
-	handler := behavior.AsHandler(b, real)
+	handler := behavior.AsHandler(b, actual)
 	followUp, err := p.store.Execute(ctx, handler)
 	if err != nil {
 		return err
 	}
 
 	// Emit event for the processed intent
-	p.emitIntentEvent(real)
+	p.emitIntentEvent(actual)
 
 	// Notify observers
 	for _, obs := range p.observers {
-		obs(real)
+		obs(actual)
 	}
 
 	// Publish collected events after successful commit
@@ -221,7 +221,7 @@ func (p *Processor) handleError(ctx context.Context, i intent.Intent, err error)
 
 // createIncident submits a CreateIncidentIntent for a failed intent.
 // Does not create incident for failed incident intents (prevents infinite loop).
-func (p *Processor) createIncident(ctx context.Context, failed intent.Intent, err error) {
+func (p *Processor) createIncident(_ context.Context, failed intent.Intent, err error) {
 	if failed.IntentType() == intent.CreateIncident || failed.IntentType() == intent.ResolveIncident {
 		p.logger.Error("incident intent failed — dropping to prevent infinite loop",
 			"intent", failed.IntentType(),

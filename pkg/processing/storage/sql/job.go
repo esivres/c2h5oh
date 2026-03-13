@@ -110,7 +110,7 @@ func (r *jobRepo) FindByProcessInstance(ctx context.Context, piKey uint64) ([]*s
 	return r.scanRows(rows)
 }
 
-func (r *jobRepo) scanRows(rows *sql.Rows) ([]*storage.Job, error) {
+func (*jobRepo) scanRows(rows *sql.Rows) ([]*storage.Job, error) {
 	var result []*storage.Job
 	for rows.Next() {
 		job := &storage.Job{}

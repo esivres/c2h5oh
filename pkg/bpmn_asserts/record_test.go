@@ -60,7 +60,7 @@ func TestRecordStream_WaitFor_FutureRecord(t *testing.T) {
 		rec, err := stream.WaitFor(ctx, func(r Record) bool {
 			return r.Intent == IntentElementCompleted
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		done <- rec
 	}()
 

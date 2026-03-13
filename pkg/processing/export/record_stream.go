@@ -31,7 +31,7 @@ func (e *RecordStreamExporter) Export(_ context.Context, events []Event) error {
 	return nil
 }
 
-func (e *RecordStreamExporter) toRecord(ev Event) bpmn_asserts.Record {
+func (*RecordStreamExporter) toRecord(ev Event) bpmn_asserts.Record {
 	return bpmn_asserts.Record{
 		PartitionID: 1,
 		Position:    int64(ev.Position),

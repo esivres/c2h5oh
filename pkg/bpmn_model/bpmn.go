@@ -308,7 +308,8 @@ func WriteToFile(bmi *BpmnModelInstance, path string) error {
 	if err != nil {
 		return fmt.Errorf("serialize bpmn: %w", err)
 	}
-	return os.WriteFile(path, data, 0644)
+	const filePermissions = 0o644
+	return os.WriteFile(path, data, filePermissions)
 }
 
 // ConvertToString serializes a BPMN model to an XML string.

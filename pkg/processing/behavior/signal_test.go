@@ -111,7 +111,7 @@ func TestSignalCatchEvent_OpensSubscription(t *testing.T) {
 	sub, ok := intents[0].(*intent.OpenSubscriptionIntent)
 	require.True(t, ok)
 	assert.Equal(t, "order-approved", sub.MessageName) // signal name stored as message name
-	assert.Equal(t, "", sub.CorrelationKey)            // signals have empty correlation key
+	assert.Empty(t, sub.CorrelationKey)                // signals have empty correlation key
 }
 
 func TestSignalThrowEvent_EmitsThrowSignal(t *testing.T) {

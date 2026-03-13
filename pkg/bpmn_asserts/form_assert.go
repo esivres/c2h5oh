@@ -10,9 +10,9 @@ import (
 // FormAssert provides fluent assertions on a deployed Zeebe form.
 type FormAssert struct {
 	t       testing.TB
-	formKey int64
-	stream  *RecordStream
 	ctx     context.Context
+	stream  *RecordStream
+	formKey int64
 }
 
 // ForForm creates a new FormAssert for the given form key.

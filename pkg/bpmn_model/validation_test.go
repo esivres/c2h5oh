@@ -126,7 +126,7 @@ func TestValidation_ExclusiveGateway_WithDefaultFlow(t *testing.T) {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsSubstr(s, substr))
+	return len(s) >= len(substr) && (s == substr || s != "" && containsSubstr(s, substr))
 }
 
 func containsSubstr(s, sub string) bool {

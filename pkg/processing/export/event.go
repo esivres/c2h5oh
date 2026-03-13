@@ -46,34 +46,14 @@ const (
 
 // Event represents a single state change in the engine.
 type Event struct {
-	// Position is the monotonically increasing sequence number within a partition.
-	Position uint64
-
-	// ValueType is the type of entity that changed.
-	ValueType ValueType
-
-	// RecordType is what happened.
-	RecordType RecordType
-
-	// Key is the entity key.
-	Key uint64
-
-	// ProcessInstanceKey is the associated process instance (0 if not applicable).
-	ProcessInstanceKey uint64
-
-	// ProcessDefinitionKey is the associated process definition.
+	Timestamp            time.Time
+	ValueType            ValueType
+	RecordType           RecordType
+	ElementId            string
+	ElementType          string
+	Value                []byte
+	Position             uint64
+	Key                  uint64
+	ProcessInstanceKey   uint64
 	ProcessDefinitionKey uint64
-
-	// ElementId is the BPMN element id (empty if not element-related).
-	ElementId string
-
-	// ElementType is the BPMN element type (empty if not element-related).
-	ElementType string
-
-	// Timestamp is when the event occurred.
-	Timestamp time.Time
-
-	// Value is the serialized entity state at the time of the event (JSON bytes).
-	// Contains the full entity snapshot for consumers that need it.
-	Value []byte
 }

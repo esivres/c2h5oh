@@ -69,9 +69,9 @@ func (m *mockStore) getExecuteCount() int {
 type mockProcessDefinitionRepo struct {
 	defs    map[uint64]*storage.ProcessDefinition
 	byHash  *storage.ProcessDefinition
+	created []*storage.ProcessDefinition
 	lastVer uint64
 	mu      sync.Mutex
-	created []*storage.ProcessDefinition
 }
 
 func (r *mockProcessDefinitionRepo) Create(_ context.Context, def *storage.ProcessDefinition) error {

@@ -14,7 +14,9 @@ import (
 // after a child element finishes. Evaluates completionCondition if present.
 // If condition is true → complete (optionally terminate remaining children).
 // If no condition → complete when all children are done.
-func checkAdHocSubProcessCompletion(ctx context.Context, s storage.Store, ei *storage.ElementInstance, piKey uint64) ([]intent.Intent, error) {
+func checkAdHocSubProcessCompletion(
+	ctx context.Context, s storage.Store, ei *storage.ElementInstance, piKey uint64,
+) ([]intent.Intent, error) {
 	// Check if the scope (FlowScopeKey) is an ad-hoc subprocess
 	scopeEI, err := s.ProcessInstances().GetElementInstance(ctx, ei.FlowScopeKey)
 	if err != nil {
@@ -136,7 +138,12 @@ func completeAdHocSubProcess(scopeKey, piKey uint64, activeChildren []uint64, ca
 
 // reEvaluateActiveElements re-evaluates the activeElementsCollection expression
 // and activates any new elements that don't already exist in the ad-hoc scope.
-func reEvaluateActiveElements(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, ah bpmn_model.AdHocSubProcess, scopeEI *storage.ElementInstance, piKey uint64, allEIs []*storage.ElementInstance) ([]intent.Intent, error) {
+func reEvaluateActiveElements(
+	ctx context.Context, s storage.Store,
+	bmi *bpmn_model.BpmnModelInstance, ah bpmn_model.AdHocSubProcess,
+	scopeEI *storage.ElementInstance, piKey uint64,
+	allEIs []*storage.ElementInstance,
+) ([]intent.Intent, error) {
 	if ah == nil {
 		return nil, nil
 	}
@@ -203,7 +210,11 @@ func reEvaluateActiveElements(ctx context.Context, s storage.Store, bmi *bpmn_mo
 }
 
 // activateAdHocElements evaluates activeElementsCollection and activates requested elements.
-func activateAdHocElements(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, ah bpmn_model.AdHocSubProcess, flowScopeKey, adHocKey, piKey, pdKey uint64) ([]intent.Intent, error) {
+func activateAdHocElements(
+	ctx context.Context, s storage.Store,
+	bmi *bpmn_model.BpmnModelInstance, ah bpmn_model.AdHocSubProcess,
+	flowScopeKey, adHocKey, piKey, pdKey uint64,
+) ([]intent.Intent, error) {
 	zAdHoc, found := bpmn_model.GetSingleExtensionElement[bpmn_model.ZeebeAdHoc](ah)
 	if !found || zAdHoc.GetActiveElementsCollection() == "" {
 		return nil, nil // no expression → stay activated, wait for external activation

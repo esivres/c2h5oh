@@ -10,9 +10,9 @@ import (
 // IncidentAssert provides fluent assertions on a Zeebe incident.
 type IncidentAssert struct {
 	t           testing.TB
-	incidentKey int64
-	stream      *RecordStream
 	ctx         context.Context
+	stream      *RecordStream
+	incidentKey int64
 }
 
 // ForIncident creates a new IncidentAssert for the given incident key.

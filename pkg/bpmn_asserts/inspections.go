@@ -109,7 +109,7 @@ func (i *ProcessEventInspections) processInstanceKeys() []int64 {
 		if json.Unmarshal(r.Value, &v) != nil {
 			return false
 		}
-		if v.BpmnElementType != "PROCESS" {
+		if v.BpmnElementType != string(ValueTypeProcess) {
 			return false
 		}
 		if i.processDefinitionKey > 0 && v.ProcessDefinitionKey != i.processDefinitionKey {
@@ -135,8 +135,8 @@ func (i *ProcessEventInspections) processInstanceKeys() []int64 {
 // started by other processes (via call activities).
 type ProcessInstanceInspections struct {
 	stream                   *RecordStream
-	parentProcessInstanceKey int64
 	bpmnProcessID            string
+	parentProcessInstanceKey int64
 }
 
 // FindProcessInstances creates a new ProcessInstanceInspections from the record stream.
@@ -201,7 +201,7 @@ func (i *ProcessInstanceInspections) processInstanceKeys() []int64 {
 		if json.Unmarshal(r.Value, &v) != nil {
 			return false
 		}
-		if v.BpmnElementType != "PROCESS" {
+		if v.BpmnElementType != string(ValueTypeProcess) {
 			return false
 		}
 		if i.parentProcessInstanceKey > 0 && v.ParentProcessInstanceKey != i.parentProcessInstanceKey {

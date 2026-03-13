@@ -387,9 +387,9 @@ const (
 
 // diState tracks position during DI generation.
 type diState struct {
-	nextX  float64
 	plane  BpmnPlane
-	shapes map[string]BpmnShape // elementId -> shape
+	shapes map[string]BpmnShape
+	nextX  float64
 }
 
 func newDiState(plane BpmnPlane) *diState {
@@ -493,7 +493,7 @@ func elementSize(fe FlowElement) (width, height float64) {
 	switch fe.(type) {
 	case StartEvent, EndEvent, IntermediateCatchEvent, IntermediateThrowEvent, BoundaryEvent:
 		return diEventWidth, diEventHeight
-	case Gateway, ExclusiveGateway, ParallelGateway, InclusiveGateway, EventBasedGateway, ComplexGateway:
+	case ExclusiveGateway, ParallelGateway, InclusiveGateway, EventBasedGateway, ComplexGateway, Gateway:
 		return diGatewayWidth, diGatewayHeight
 	default:
 		return diTaskWidth, diTaskHeight

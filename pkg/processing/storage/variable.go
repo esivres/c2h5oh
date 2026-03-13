@@ -4,21 +4,11 @@ import "context"
 
 // Variable is a mutable entity representing a process variable within a scope.
 type Variable struct {
-	// Key is the unique identifier.
-	Key uint64
-
-	// ProcessInstanceKey links to the owning process instance.
+	Name               string
+	Value              []byte
+	Key                uint64
 	ProcessInstanceKey uint64
-
-	// ScopeKey is the element instance key that defines this variable's scope
-	// (process instance, subprocess, multi-instance body).
-	ScopeKey uint64
-
-	// Name is the variable name.
-	Name string
-
-	// Value is the serialized variable value (JSON bytes).
-	Value []byte
+	ScopeKey           uint64
 }
 
 // VariableRepository manages process variable storage.

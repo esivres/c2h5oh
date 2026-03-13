@@ -1,7 +1,6 @@
 package xml
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,7 +34,7 @@ func TestNamespaceRegistry(t *testing.T) {
 	assert.Equal(t, "bpmn", doc.LookupPrefix("http://www.omg.org/spec/BPMN/20100524/MODEL"))
 	assert.Equal(t, "zeebe", doc.LookupPrefix("http://camunda.org/schema/zeebe/1.0"))
 	assert.Equal(t, "http://www.omg.org/spec/BPMN/20100524/MODEL", doc.LookupURI("bpmn"))
-	assert.Equal(t, "", doc.LookupPrefix("http://unknown"))
+	assert.Empty(t, doc.LookupPrefix("http://unknown"))
 }
 
 func TestAutoGeneratePrefix(t *testing.T) {
@@ -57,11 +56,11 @@ func TestElementAttributes(t *testing.T) {
 
 	assert.Equal(t, "process1", elem.GetAttribute("id"))
 	assert.Equal(t, "My Process", elem.GetAttribute("name"))
-	assert.Equal(t, "", elem.GetAttribute("nonexistent"))
+	assert.Empty(t, elem.GetAttribute("nonexistent"))
 	assert.True(t, elem.HasAttribute("id"))
 
 	elem.RemoveAttribute("name")
-	assert.Equal(t, "", elem.GetAttribute("name"))
+	assert.Empty(t, elem.GetAttribute("name"))
 }
 
 func TestElementAttributesNS(t *testing.T) {
@@ -72,7 +71,7 @@ func TestElementAttributesNS(t *testing.T) {
 	elem.SetAttributeNS("http://camunda.org/schema/zeebe/1.0", "type", "my-worker")
 
 	assert.Equal(t, "my-worker", elem.GetAttributeNS("http://camunda.org/schema/zeebe/1.0", "type"))
-	assert.Equal(t, "", elem.GetAttributeNS("http://other", "type"))
+	assert.Empty(t, elem.GetAttributeNS("http://other", "type"))
 }
 
 func TestChildElements(t *testing.T) {
@@ -309,7 +308,7 @@ func TestCreateDocumentWithNamespaces(t *testing.T) {
 	output, err := doc.WriteToString()
 	require.NoError(t, err)
 
-	assert.True(t, strings.Contains(output, "bpmn:definitions"))
-	assert.True(t, strings.Contains(output, "bpmn:process"))
-	assert.True(t, strings.Contains(output, `xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"`))
+	assert.Contains(t, output, "bpmn:definitions")
+	assert.Contains(t, output, "bpmn:process")
+	assert.Contains(t, output, `xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"`)
 }

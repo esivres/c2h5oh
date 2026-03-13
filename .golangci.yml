@@ -3,11 +3,119 @@ version: "2"
 linters:
   default: none
   enable:
+    - bodyclose
+    - copyloopvar
+    - depguard
+    - dogsled
+    - dupl
     - errcheck
+    - errorlint
+    - funlen
+    - gocheckcompilerdirectives
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - godox
+    - mnd
+    - goprintffuncname
+    - gosec
+    - govet
+    - intrange
     - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - revive
     - staticcheck
+    - testifylint
+    - unconvert
+    - unparam
     - unused
+    - whitespace
+  settings:
+    depguard:
+      rules:
+        main:
+          list-mode: lax
+          allow:
+            - "github.com/esivres/c2h5oh/*"
+    dupl:
+      threshold: 100
+    funlen:
+      lines: -1
+      statements: 50
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+      disabled-checks:
+        - dupImport
+        - ifElseChain
+        - octalLiteral
+        - whyNoLint
+        - hugeParam        # large BPMN structs passed by value are OK for immutable read
+        - paramTypeCombine  # style preference — not enforcing
+        - rangeValCopy      # our value types are small enough
+        - unnamedResult
+        - typeAssertChain
+    gocyclo:
+      min-complexity: 15
+    godox:
+      keywords:
+        - FIXME
+    mnd:
+      checks:
+        - argument
+        - case
+        - condition
+        - return
+      ignored-numbers:
+        - '0'
+        - '1'
+        - '2'
+        - '3'
+      ignored-functions:
+        - strings.SplitN
+    govet:
+      enable-all: true
+      disable:
+        - shadow
+        - fieldalignment  # struct layout is intentional for readability
+    errorlint:
+      asserts: false
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+      ignore-rules:
+        - "importas"
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+    revive:
+      rules:
+        - name: indent-error-flow
+        - name: unexported-return
+          disabled: true
+        - name: unused-parameter
+        - name: unused-receiver
+
   exclusions:
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+      - legacy
     rules:
       # Zeebe proto has deprecated types that we must use for compatibility
       - linters: [staticcheck]
@@ -20,3 +128,65 @@ linters:
       - linters: [errcheck]
         text: "`proc\\.Run`"
         path: "_test\\.go"
+      # Marker methods for type discrimination (ADR-0003) — receiver is intentionally unused
+      - linters: [revive]
+        text: "unused-receiver"
+        path: "pkg/bpmn_model/"
+      # IntentType() methods implement the Intent interface — receiver is intentionally unused
+      - linters: [revive]
+        text: "unused-receiver"
+        path: "pkg/processing/intent/"
+      # unused-parameter in test helpers is OK — keeps API consistent for future use
+      - linters: [revive, unparam]
+        path: "_test\\.go"
+      # Magic numbers in tests and conformance suites are expected
+      - linters: [mnd]
+        path: "_test\\.go"
+      - linters: [mnd]
+        path: "pkg/processing/storage/conformance\\.go"
+      # Type-switch / dispatch functions — cyclomatic complexity is inherent to BPMN element/intent dispatch
+      - linters: [gocyclo, funlen]
+        text: "emitIntentEvent|resolveElementType|mapIntent|resolveElementTypeFromNode|buildBpmnModel|DefaultRegistry|logRecordDetails|processInstanceKeys"
+      # BPMN event handling — complex by nature (error propagation, scope traversal)
+      - linters: [gocyclo]
+        text: "handleErrorEndEvent|checkAdHocSubProcessCompletion|cancelEventBasedGatewaySiblings"
+      # Duplicate code in test helpers is acceptable
+      - linters: [dupl]
+        path: "_test\\.go"
+      # Duplicate code in bpmn_asserts — each assert type has similar get*Value methods
+      - linters: [dupl]
+        path: "pkg/bpmn_asserts/"
+      # Long lines in SQL queries and proto mappings
+      - linters: [lll]
+        path: "pkg/processing/storage/sql/"
+      - linters: [lll]
+        path: "pkg/gateway/"
+      - linters: [lll]
+        path: "pkg/processing/engine/"
+      - linters: [lll]
+        path: "pkg/bpmn_asserts/"
+      # G115 integer overflow — Zeebe proto uses int64/int32, our engine uses uint64. Controlled conversion.
+      - linters: [gosec]
+        text: "G115"
+      # G306 WriteFile permissions — BPMN file export, not security sensitive
+      - linters: [gosec]
+        text: "G306"
+      # init() in bpmn_model registers types — essential for model initialization
+      - linters: [gochecknoinits]
+        path: "pkg/bpmn_model/"
+      # noctx — internal HTTP calls not applicable (we use gRPC)
+      - linters: [noctx]
+        path: ".*"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: 'interface{}'
+          replacement: 'any'
+    goimports:
+      local-prefixes:
+        - github.com/esivres/*

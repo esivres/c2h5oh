@@ -10,7 +10,7 @@ import (
 // activatedJobTask handles ElementActivatedIntent for job-based tasks:
 // serviceTask, userTask, scriptTask, businessRuleTask, sendTask.
 // Creates a job for external workers.
-func activatedJobTask(ctx context.Context, s storage.Store, i *intent.ElementActivatedIntent) ([]intent.Intent, error) {
+func activatedJobTask(_ context.Context, _ storage.Store, i *intent.ElementActivatedIntent) ([]intent.Intent, error) {
 	jobType := i.JobType
 	if jobType == "" && i.ElementType == "userTask" {
 		jobType = "io.camunda.zeebe:userTask"

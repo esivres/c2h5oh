@@ -14,6 +14,8 @@ import (
 
 const bpmnNS = "http://www.omg.org/spec/BPMN/20100524/MODEL"
 
+const elementTypeBoundaryEvent = "boundaryEvent"
+
 // loadBPMN loads and parses the BPMN model from a process definition key.
 func loadBPMN(ctx context.Context, s storage.Store, pdKey uint64) (*bpmn_model.BpmnModelInstance, error) {
 	def, err := s.ProcessDefinitions().FindByKey(ctx, pdKey)
@@ -127,7 +129,7 @@ func parseISO8601Duration(s string) (time.Duration, error) {
 		s = s[idx+1:]
 	}
 
-	if len(s) > 0 && s[0] == 'T' {
+	if s != "" && s[0] == 'T' {
 		s = s[1:]
 		if idx := findChar(s, 'H'); idx >= 0 {
 			hours, err := parseInt(s[:idx])
@@ -206,7 +208,7 @@ func resolveSignalName(bmi *bpmn_model.BpmnModelInstance, signalRef string) stri
 }
 
 // resolveCorrelationKey evaluates the correlation key expression from ZeebeSubscription.
-func resolveCorrelationKey(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, messageRef string, scopeKey uint64) string {
+func resolveCorrelationKey(_ context.Context, _ storage.Store, _ *bpmn_model.BpmnModelInstance, _ string, _ uint64) string {
 	return ""
 }
 
@@ -250,14 +252,14 @@ func resolveElementType(node bpmn_model.FlowNode) string {
 	case bpmn_model.IntermediateThrowEvent:
 		return "intermediateThrowEvent"
 	case bpmn_model.BoundaryEvent:
-		return "boundaryEvent"
+		return elementTypeBoundaryEvent
 	default:
 		return "unknown"
 	}
 }
 
 // resolveJobType extracts the job type from ZeebeTaskDefinition extension.
-func resolveJobType(bmi *bpmn_model.BpmnModelInstance, node bpmn_model.FlowNode) string {
+func resolveJobType(_ *bpmn_model.BpmnModelInstance, node bpmn_model.FlowNode) string {
 	if be, ok := node.(bpmn_model.BaseElement); ok {
 		td, found := bpmn_model.GetSingleExtensionElement[bpmn_model.ZeebeTaskDefinition](be)
 		if found {
@@ -268,7 +270,10 @@ func resolveJobType(bmi *bpmn_model.BpmnModelInstance, node bpmn_model.FlowNode)
 }
 
 // activateTarget creates an ActivateElementIntent for a target flow node.
-func activateTarget(piKey, pdKey, flowScopeKey uint64, target bpmn_model.FlowNode, bmi *bpmn_model.BpmnModelInstance) *intent.ActivateElementIntent {
+func activateTarget(
+	piKey, pdKey, flowScopeKey uint64,
+	target bpmn_model.FlowNode, bmi *bpmn_model.BpmnModelInstance,
+) *intent.ActivateElementIntent {
 	return &intent.ActivateElementIntent{
 		Header: intent.Header{
 			Origin:             intent.Internal,

@@ -11,10 +11,10 @@ import (
 // Model is a registry of element types. It maps XML qualified names and Go types
 // to ModelElementType descriptors.
 type Model struct {
-	name          string
-	typesByQName  map[string]*ModelElementType // "nsURI#localName" -> type
+	typesByQName  map[string]*ModelElementType
 	typesByGoType map[reflect.Type]*ModelElementType
-	alternativeNS map[string]string // alternative URI -> actual URI
+	alternativeNS map[string]string
+	name          string
 	mu            sync.RWMutex
 }
 
@@ -109,15 +109,15 @@ func (m *Model) Types() []*ModelElementType {
 
 // ModelElementType describes an XML element type in the model.
 type ModelElementType struct {
+	GoType         reflect.Type
 	Model          *Model
+	BaseType       *ModelElementType
+	Attributes     map[string]*AttributeDescriptor
+	Provider       InstanceProvider
 	TypeName       string
 	TypeNamespace  string
-	GoType         reflect.Type // the Go interface type (use reflect.TypeFor[*MyInterface]())
-	BaseType       *ModelElementType
 	ExtendingTypes []*ModelElementType
-	Attributes     map[string]*AttributeDescriptor
 	ChildSpecs     []*ChildSpec
-	Provider       InstanceProvider
 	IsAbstract     bool
 }
 

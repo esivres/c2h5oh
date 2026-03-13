@@ -13,7 +13,11 @@ import (
 // applyInputMappings evaluates ZeebeInput expressions from the BPMN element
 // and writes the results as variables in the element's scope.
 // Source expressions are evaluated against the parent scope variables.
-func applyInputMappings(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, elementId string, elementScopeKey, parentScopeKey uint64, piKey uint64) error {
+func applyInputMappings(
+	ctx context.Context, s storage.Store,
+	bmi *bpmn_model.BpmnModelInstance, elementId string,
+	elementScopeKey, parentScopeKey uint64, piKey uint64,
+) error {
 	inputs, _ := getIoMappings(bmi, elementId)
 	if len(inputs) == 0 {
 		return nil
@@ -54,7 +58,11 @@ func applyInputMappings(ctx context.Context, s storage.Store, bmi *bpmn_model.Bp
 // applyOutputMappings evaluates ZeebeOutput expressions from the BPMN element
 // and writes the results as variables in the parent scope.
 // Source expressions are evaluated against the element's scope variables.
-func applyOutputMappings(ctx context.Context, s storage.Store, bmi *bpmn_model.BpmnModelInstance, elementId string, elementScopeKey, parentScopeKey uint64, piKey uint64) error {
+func applyOutputMappings(
+	ctx context.Context, s storage.Store,
+	bmi *bpmn_model.BpmnModelInstance, elementId string,
+	elementScopeKey, parentScopeKey uint64, piKey uint64,
+) error {
 	_, outputs := getIoMappings(bmi, elementId)
 	if len(outputs) == 0 {
 		return nil

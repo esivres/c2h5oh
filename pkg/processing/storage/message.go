@@ -16,47 +16,23 @@ const (
 
 // MessageSubscription is a mutable entity representing a pending message catch event.
 type MessageSubscription struct {
-	// Key is the unique identifier.
-	Key uint64
-
-	// ProcessInstanceKey links to the owning process instance.
+	CreatedAt          time.Time
+	MessageName        string
+	CorrelationKey     string
+	Key                uint64
 	ProcessInstanceKey uint64
-
-	// ElementInstanceKey links to the element instance waiting for this message.
 	ElementInstanceKey uint64
-
-	// MessageName is the BPMN message name to correlate on.
-	MessageName string
-
-	// CorrelationKey is the business key for correlation.
-	CorrelationKey string
-
-	// State is the current lifecycle state.
-	State MessageSubscriptionState
-
-	// CreatedAt is the creation timestamp.
-	CreatedAt time.Time
+	State              MessageSubscriptionState
 }
 
 // MessageBuffer is a buffered message waiting for a matching subscription.
 type MessageBuffer struct {
-	// Key is the unique identifier.
-	Key uint64
-
-	// MessageName is the BPMN message name.
-	MessageName string
-
-	// CorrelationKey is the business key for correlation.
+	ExpiresAt      time.Time
+	CreatedAt      time.Time
+	MessageName    string
 	CorrelationKey string
-
-	// Variables is the serialized message payload (JSON bytes).
-	Variables []byte
-
-	// ExpiresAt is the TTL deadline after which the message is dropped.
-	ExpiresAt time.Time
-
-	// CreatedAt is the creation timestamp.
-	CreatedAt time.Time
+	Variables      []byte
+	Key            uint64
 }
 
 // MessageSubscriptionRepository manages message subscriptions and buffered messages.

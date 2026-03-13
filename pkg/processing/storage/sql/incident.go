@@ -73,7 +73,7 @@ func (r *incidentRepo) FindUnresolved(ctx context.Context, limit int) ([]*storag
 	return r.scanRows(rows)
 }
 
-func (r *incidentRepo) scanRows(rows *sql.Rows) ([]*storage.Incident, error) {
+func (*incidentRepo) scanRows(rows *sql.Rows) ([]*storage.Incident, error) {
 	var result []*storage.Incident
 	for rows.Next() {
 		inc := &storage.Incident{}
